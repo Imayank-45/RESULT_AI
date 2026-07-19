@@ -551,6 +551,7 @@ function App() {
                 <option value="B.Tech.">B.Tech.</option>
                 <option value="B.E.">B.E.</option>
                 <option value="B.Pharmacy">B.Pharmacy.</option>
+                <option value="B.Pharmacy(PCI)">B.Pharmacy(PCI)</option>
                 <option value="M.Tech.">M.Tech.</option>
                 <option value="MCA">MCA</option>
                 <option value="MBA">MBA</option>
