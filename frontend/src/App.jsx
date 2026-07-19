@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
+import ResultCompareStudio from './ResultCompareStudio';
 
 // Determine backend API and WebSocket endpoints dynamically based on the current host/port
 const isDev = window.location.port === '5173';
@@ -39,6 +40,9 @@ function App() {
 
   // Selected student record for details modal
   const [selectedRecord, setSelectedRecord] = useState(null);
+
+  // Navigation tab state
+  const [activeTab, setActiveTab] = useState('extractor'); // extractor or compare
 
   // Terminal scroll reference
   const terminalEndRef = useRef(null);
@@ -422,6 +426,42 @@ function App() {
           </motion.div>
           <span className="logo-text">ResultAI</span>
         </div>
+
+        {/* Navigation Tabs */}
+        <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '8px', border: '1px solid var(--card-border)' }}>
+          <button 
+            className="tab-btn" 
+            style={{
+              background: activeTab === 'extractor' ? 'var(--primary-gradient)' : 'transparent',
+              color: activeTab === 'extractor' ? '#FFFFFF' : 'var(--text-muted)',
+              border: 'none',
+              padding: '6px 14px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '700',
+              fontSize: '12px'
+            }}
+            onClick={() => setActiveTab('extractor')}
+          >
+            Result Extractor
+          </button>
+          <button 
+            className="tab-btn" 
+            style={{
+              background: activeTab === 'compare' ? 'var(--primary-gradient)' : 'transparent',
+              color: activeTab === 'compare' ? '#FFFFFF' : 'var(--text-muted)',
+              border: 'none',
+              padding: '6px 14px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '700',
+              fontSize: '12px'
+            }}
+            onClick={() => setActiveTab('compare')}
+          >
+            Result Compare Studio
+          </button>
+        </div>
         <div className="header-actions">
           {/* Theme Toggle Button */}
           <button 
@@ -457,7 +497,8 @@ function App() {
       </motion.header>
 
       {/* DASHBOARD BODY */}
-      <div className="dashboard-grid">
+      {activeTab === 'extractor' ? (
+        <div className="dashboard-grid">
         {/* LEFT COLUMN: SIDEBAR CONTROL PANEL */}
         <motion.aside 
           initial={{ opacity: 0, x: -15 }}
@@ -941,6 +982,9 @@ function App() {
           </section>
         </motion.main>
       </div>
+      ) : (
+        <ResultCompareStudio />
+      )}
 
       {/* STUDENT GRADES DETAIL MODAL (With Framer Motion animate overlays) */}
       <AnimatePresence>
