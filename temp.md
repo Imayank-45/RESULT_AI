@@ -86,18 +86,18 @@ RESULT_AI/
 ### 1. `automation/scraper.py` — Playwright Browser Automation
 - **Class:** `RGPVScraper` (context manager pattern `__enter__`/`__exit__`)
 - **Flow:**
-  1. Opens Chromium browser (non-headless, visible window for CAPTCHA solving)
+  1. Opens Chromium browser (supports both headless and headful modes; headless is recommended for high OCR accuracy)
   2. Navigates to `PROGRAM_SELECT_URL` → selects program via radio buttons
   3. Fills enrollment number in `SELECTOR_ENROLLMENT_INPUT`
-  4. Optionally selects semester via `SELECTOR_SEMESTER_SELECT`
-  5. Waits for human to solve CAPTCHA in the browser
-  6. Dual submission mode: detect in-browser submission OR terminal Enter keypress (`msvcrt`)
-  7. Polls page content every 500ms for SGPA/CGPA keywords to confirm result loaded
-  8. Handles JS Alert dialogs: dismisses them, differentiates "Not Found" vs "Wrong CAPTCHA"
-  9. Retry logic: up to 3 attempts per student
+  4. Selects semester via `SELECTOR_SEMESTER_SELECT` and explicitly waits for the ASP.NET postback to load the new CAPTCHA image (using a client-side JavaScript validator that monitors changes to the image `src` and completeness)
+  5. Automatically screenshots and solves the CAPTCHA locally using the `ddddocr` engine
+  6. Normalizes the CAPTCHA prediction (converts to uppercase to handle case-ambiguities, filters out invalid non-alphanumeric outputs like Chinese characters/noise, and triggers an in-browser CAPTCHA click to refresh if invalid characters are detected)
+  7. Submits the form and handles dialog/alert events safely (clearing duplicate listeners beforehand and wrapping dialog dismissal to prevent asyncio event loop crashes)
+  8. If a CAPTCHA fails, handles retry loop (up to 12 auto-attempts) by re-selecting the target semester if it resets and waiting for the new CAPTCHA image to refresh
+  9. Polls page content for SGPA/CGPA keywords to confirm the result has successfully loaded
   10. Returns `FetchResult(enrollment, html, error)` dataclass
 - **Browser close detection:** catches Playwright-specific "Target closed" / "has been closed" signals
-- **Polite delay:** random 3–6 second sleep between requests
+- **Polite delay:** random 1–2 second sleep (or 3-6s custom config) between requests to protect server load
 
 ### 2. `automation/parser.py` — BeautifulSoup HTML Parser
 - **Class:** `ResultNotFound(Exception)` — raised when record absent
@@ -273,7 +273,7 @@ venv\Scripts\python backend\server.py
 2. **Single Job at a Time:** Global `active_runner` variable + `runner_lock` — only one scraping job can run simultaneously.
 3. **In-Memory State:** Job state, records, and logs are all in-memory (`ScrapeJobRunner` object). No database persistence. Server restart = data lost.
 4. **No Authentication:** All API endpoints are open, no JWT/auth system.
-5. **CAPTCHA is Manual:** Human must solve CAPTCHAs in the visible Chromium window. No auto-OCR integration yet.
+5. **CAPTCHA Autoresolution:** CAPTCHAs are fully automated via local `ddddocr` integration. Running in `--headless` mode is highly recommended because headful mode captures OS high-DPI scaling artifacts, which lowers OCR recognition rates.
 6. **Selectors May Break:** RGPV HTML selectors (`#ctl00_ContentPlaceHolder1_...`) are hardcoded. May change when RGPV updates their portal.
 7. **Log Cap:** Both server-side (`active_runner.logs`) and client-side logs capped at 500 entries.
 8. **No Celery/Redis:** Task queue is just a Python `threading.Thread` + `queue.Queue`. Not distributed.
