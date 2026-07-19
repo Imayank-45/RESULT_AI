@@ -204,7 +204,8 @@ RESULT_AI/
   "end": 20,
   "pad": 2,
   "sem": "3",
-  "program": "B.Tech."
+  "program": "B.Tech.",
+  "headless": true
 }
 ```
 

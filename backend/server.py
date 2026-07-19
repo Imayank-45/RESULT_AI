@@ -98,13 +98,14 @@ original_stdout = sys.stdout
 sys.stdout = WebLogger(original_stdout, log_callback)
 
 class ScrapeJobRunner:
-    def __init__(self, prefix: str, start: int, end: int, pad: int, sem: Optional[str], program: str):
+    def __init__(self, prefix: str, start: int, end: int, pad: int, sem: Optional[str], program: str, headless: bool = True):
         self.prefix = prefix
         self.start = start
         self.end = end
         self.pad = pad
         self.sem = sem
         self.program = program
+        self.headless = headless
         
         self.status = "running"
         self.total = end - start + 1
@@ -165,7 +166,7 @@ class ScrapeJobRunner:
         self.notify_progress()
         
         try:
-            self._scraper = RGPVScraper(headless=False)
+            self._scraper = RGPVScraper(headless=self.headless)
             with self._scraper as scraper:
                 for roll in range(self.start, self.end + 1):
                     if self._cancel_requested:
@@ -247,6 +248,7 @@ class StartJobRequest(BaseModel):
     pad: int = 2
     sem: Optional[str] = None
     program: str = "B.Tech."
+    headless: bool = True
 
 
 @app.post("/api/scrape/start")
@@ -265,7 +267,8 @@ def start_scraping_job(req: StartJobRequest):
             end=req.end,
             pad=req.pad,
             sem=req.sem,
-            program=req.program
+            program=req.program,
+            headless=req.headless
         )
         active_runner.start_job()
         

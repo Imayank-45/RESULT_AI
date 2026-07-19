@@ -148,7 +148,8 @@ function App() {
       end: parseInt(end),
       pad: parseInt(pad),
       sem: sem || null,
-      program
+      program,
+      headless: true
     };
 
     try {
