@@ -221,9 +221,12 @@ class RGPVScraper:
                 for r in radios:
                     r_id = r.get_attribute("id")
                     label = page.query_selector(f"label[for='{r_id}']")
-                    if label and label.inner_text().strip().lower() == program.strip().lower():
-                        target_radio_id = r_id
-                        break
+                    if label:
+                        lbl_norm = label.inner_text().replace(".", "").replace(" ", "").replace("-", "").lower().strip()
+                        prog_norm = program.replace(".", "").replace(" ", "").replace("-", "").lower().strip()
+                        if lbl_norm == prog_norm:
+                            target_radio_id = r_id
+                            break
                 
                 if target_radio_id:
                     page.click(f"#{target_radio_id}")
