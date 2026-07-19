@@ -62,10 +62,16 @@ def write_excel(records: List[dict], out_path: str) -> None:
             continue
 
         result_status = rec.get("result", "UNKNOWN")
-        fail_subjects = rec.get("fail_subjects") or []
         result_display = result_status
-        if result_status == "FAIL" and fail_subjects:
-            result_display = f"Fail in {', '.join(fail_subjects)}"
+        if result_status == "FAIL":
+            fail_subjects = rec.get("fail_subjects") or []
+            if fail_subjects:
+                cleaned = []
+                for s in fail_subjects:
+                    clean_code = s.split("-")[0].strip() if "-" in s else s.strip()
+                    if clean_code not in cleaned:
+                        cleaned.append(clean_code)
+                result_display = f"Fail in {', '.join(cleaned)}"
 
         row = [i, rec.get("enrollment", ""), rec.get("name", "")]
         for code in subject_columns:

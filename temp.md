@@ -1,7 +1,314 @@
 # ResultAI - RGPV Result Analytics & Dashboard Platform
-## Technical Specification & Product Design Document
+## Technical Specification, Product Design & Current Implementation Status
 
-This document outlines the comprehensive system design, specifications, and architecture for **ResultAI**, a modern web-based results analytics platform. It extends the core capabilities of the existing RGPV CLI Result Fetcher into a scalable, multi-tenant enterprise system designed for engineering colleges affiliated with Rajiv Gandhi Proudyogiki Vishwavidyalaya (RGPV).
+> **Last Updated:** 2026-07-18  
+> **Status:** MVP Live — Backend + Frontend Fully Functional
+
+---
+
+## 🔧 TECH STACK (Current Implementation)
+
+### Backend
+| Layer | Technology | Version |
+|---|---|---|
+| Web Framework | **FastAPI** | ≥ 0.110.0 |
+| ASGI Server | **Uvicorn** | ≥ 0.28.0 |
+| Browser Automation | **Playwright (Sync API)** | ≥ 1.44.0 |
+| HTML Parser | **BeautifulSoup4** | ≥ 4.12.0 |
+| HTML Parser Backend | **lxml** | ≥ 5.2.0 |
+| Excel Generation | **openpyxl** | ≥ 3.1.0 |
+| Data Handling | **pandas** | ≥ 2.2.0 |
+| Real-time Comm | **WebSockets** | ≥ 12.0 |
+| Language | **Python 3.x** | — |
+
+### Frontend
+| Layer | Technology | Version |
+|---|---|---|
+| UI Framework | **React** | ^19.2.7 |
+| Build Tool | **Vite** | ^8.1.1 |
+| Animations | **Framer Motion** | ^12.42.2 |
+| Language | **JavaScript (JSX)** | ES Module |
+| Styling | **Vanilla CSS** (Custom Design System) | — |
+| Fonts | **Google Fonts** — Outfit, Inter, Fira Code | — |
+| Linter | **oxlint** | ^1.71.0 |
+
+### Runtime & Environment
+| Component | Tech |
+|---|---|
+| OS Target | Windows (msvcrt used for keypress detection) |
+| Browser | Chromium (via Playwright) |
+| Python Env | venv (virtual environment) |
+| Data Output | `.xlsx` Excel files in `/data` folder |
+| Real-time Protocol | WebSocket (`/api/ws`) + HTTP REST |
+
+---
+
+## 📁 CURRENT PROJECT STRUCTURE (Actual)
+
+```
+RESULT_AI/
+├── main.py                    # CLI entry point (original standalone mode)
+├── requirements.txt           # Python dependencies
+├── README.md                  # Setup & usage guide
+├── temp.md                    # This document
+├── venv/                      # Python virtual environment
+├── data/                      # Output Excel files (.xlsx)
+│   ├── .gitkeep
+│   ├── RGPV_Result_0105IT2410_1-2.xlsx
+│   └── RGPV_Result_0105IT2410_1-3.xlsx
+├── automation/                # Core scraping & parsing logic
+│   ├── __init__.py
+│   ├── scraper.py             # Playwright browser automation
+│   ├── parser.py              # BeautifulSoup HTML parser
+│   └── excel_writer.py        # openpyxl Excel exporter
+├── backend/                   # FastAPI web server
+│   ├── __init__.py
+│   └── server.py              # REST API + WebSocket server
+└── frontend/                  # React Vite SPA
+    ├── index.html
+    ├── package.json
+    ├── vite.config.js
+    ├── .gitignore
+    ├── .oxlintrc.json
+    ├── dist/                  # Production build output
+    ├── public/
+    └── src/
+        ├── main.jsx           # React entry point
+        ├── App.jsx            # Main application component (845 lines)
+        ├── App.css            # Component-level styles
+        └── index.css          # Global design system CSS (913 lines)
+```
+
+---
+
+## ✅ WHAT IS CURRENTLY IMPLEMENTED (MVP Done)
+
+### 1. `automation/scraper.py` — Playwright Browser Automation
+- **Class:** `RGPVScraper` (context manager pattern `__enter__`/`__exit__`)
+- **Flow:**
+  1. Opens Chromium browser (non-headless, visible window for CAPTCHA solving)
+  2. Navigates to `PROGRAM_SELECT_URL` → selects program via radio buttons
+  3. Fills enrollment number in `SELECTOR_ENROLLMENT_INPUT`
+  4. Optionally selects semester via `SELECTOR_SEMESTER_SELECT`
+  5. Waits for human to solve CAPTCHA in the browser
+  6. Dual submission mode: detect in-browser submission OR terminal Enter keypress (`msvcrt`)
+  7. Polls page content every 500ms for SGPA/CGPA keywords to confirm result loaded
+  8. Handles JS Alert dialogs: dismisses them, differentiates "Not Found" vs "Wrong CAPTCHA"
+  9. Retry logic: up to 3 attempts per student
+  10. Returns `FetchResult(enrollment, html, error)` dataclass
+- **Browser close detection:** catches Playwright-specific "Target closed" / "has been closed" signals
+- **Polite delay:** random 3–6 second sleep between requests
+
+### 2. `automation/parser.py` — BeautifulSoup HTML Parser
+- **Class:** `ResultNotFound(Exception)` — raised when record absent
+- **`is_not_found(page_text)`** — checks for patterns: "no record found", "invalid enrollment", "result not found", "data not available"
+- **`find_result_table(soup)`** — heuristic table finder: scores tables by counting subject-code-like headers (`[A-Z]{2,4}-?\d{3,4}`)
+- **`parse_result_html(html, enrollment)`** — full parser:
+  - Extracts `Name` from `#lblName` ASP.NET control
+  - Extracts `SGPA` from `#lblSGPA`, `CGPA` from `#lblcgpa`, `Result` from `#lblResult`
+  - Fallback: regex SGPA/CGPA extraction on raw page text
+  - Subject/Grade extraction: scans all 4-column table rows for subject code pattern
+  - Fallback: uses `find_result_table` for alternate layout
+  - Fail subjects: grades matching `F`, `FAIL`, `AB`, `ABSENT`, `RL`
+  - Result determination: PASS / FAIL / UNKNOWN
+
+### 3. `automation/excel_writer.py` — openpyxl Excel Generator
+- Generates `.xlsx` with columns: `S.NO | ENROLLMENT | NAME | [subjects] | RESULT | SGPA | CGPA`
+- Dynamic subject columns (first-seen order across all records)
+- Header styling: bold + blue fill (`DDEBF7`) + thin borders + center alignment
+- RESULT cell: green font (`008000`) for PASS, red font (`FF0000`) for FAIL
+- FAIL display: shows `"Fail in IT301, ES302"` instead of just FAIL
+- Auto-fit column widths based on content
+- Frozen header row (`A2`)
+
+### 4. `backend/server.py` — FastAPI Server (398 lines)
+- **WebSocket Manager:** `ConnectionManager` class — manages active WS connections, broadcasts JSON messages
+- **Custom stdout redirect:** `WebLogger(io.TextIOBase)` — captures `print()` output, buffers lines, sends to `update_queue` for real-time WebSocket streaming
+- **`ScrapeJobRunner` class:**
+  - Runs scraping in a background `threading.Thread`
+  - Tracks: `status`, `total`, `processed`, `pass_count`, `fail_count`, `not_found_count`, `error_count`, `current_enrollment`, `records[]`, `logs[]`
+  - `cancel()` method — forces browser closure, sets status to `cancelled`
+  - `notify_progress()` — pushes status dict to `update_queue`
+  - Log capping: keeps last 500 log lines in memory
+- **REST API Endpoints:**
+  - `POST /api/scrape/start` — starts new scraping job (validates no active job already running)
+  - `POST /api/scrape/cancel` — cancels active job
+  - `GET /api/scrape/status` — returns current job status dict
+  - `GET /api/scrape/download?path=...` — FileResponse for Excel download (validates `.xlsx` extension, looks in `/data`)
+- **WebSocket Endpoint:** `GET /api/ws` — sends initial status on connect, then keeps connection alive
+- **Background broadcast loop:** `broadcast_updates()` coroutine — polls `update_queue` every 150ms, broadcasts to all WS clients
+- **Static file serving:** mounts `frontend/dist` at root `/` if built
+- **CORS:** all origins allowed (`*`) for dev compatibility
+- **Global lock:** `runner_lock` (threading.Lock) prevents concurrent jobs
+
+### 5. `frontend/src/App.jsx` — React SPA (845 lines)
+- **Dynamic endpoint detection:** Checks `window.location.port === '5173'` (Vite dev) vs production; sets `API_BASE` and `WS_URL` accordingly
+- **State management:** `useState` hooks for form fields (prefix, start, end, pad, sem, program), job state, selected record modal
+- **WebSocket connection:**
+  - Auto-reconnects on disconnect (2-second retry delay)
+  - Handles `{type: "status", data: {...}}` messages → `mergeStatus()`
+  - Handles `{type: "log", message: "..."}` messages → appends to logs array, caps at 500
+- **HTTP polling:** Fetches `/api/scrape/status` on load for state recovery
+- **`mergeStatus()`:** Safe state merger with `??` fallback to prevent undefined crashes
+- **UI Sections:**
+  1. **Header** — Logo (gradient "R" icon), animated via Framer Motion, dark/light theme toggle, job status badge with pulse animation
+  2. **Sidebar (Control Panel)** — Form with Enrollment Prefix, Start Roll, End Roll, Padding, Semester (1–8 dropdown), Program (B.Tech/B.E/B.Pharmacy/M.Tech/MCA/MBA), Start/Cancel buttons
+  3. **Metric Cards Row** — 5 cards: Processed, Passed, Failed, Not Found, Errors (each with custom accent color, icon, top border)
+  4. **Analytics Section** (visible when records > 0):
+     - SGPA Distribution Bar Chart: 6 ranges (`< 5.0`, `5.0-6.0`, `6.0-7.0`, `7.0-8.0`, `8.0-9.0`, `> 9.0`), color-coded bars
+     - Circular Pass Rate Gauge: SVG circle with stroke-dashoffset animation, purple gradient
+  5. **Terminal Logger** — macOS-style dots (red/yellow/green), dark viewport, color-coded logs (green=system commands, red=errors, orange=warnings, cyan=scraper messages), line numbers, auto-scroll
+  6. **Student Records Table** — Enrollment, Name, Result badge (PASS/FAIL/Not Found), SGPA, CGPA, "View Grades" button
+  7. **Student Detail Modal** — Framer Motion animated overlay with subject-code: grade grid, fail grades highlighted
+- **CAPTCHA notice banner:** Shown during active runs, warning about browser window and CAPTCHA
+
+### 6. `frontend/src/index.css` — Design System (913 lines)
+- **Color palette:** Deep dark slate (`#020817` bg, `#0F172A` sidebar, `#111827` cards)
+- **CSS Custom Properties:** `--primary` (`#7C3AED`), `--success` (`#22C55E`), `--danger` (`#EF4444`), `--warning` (`#F59E0B`)
+- **Light theme:** Full set of overrides via `body.light-theme` class
+- **Glassmorphism panels:** `.glass-panel` with backdrop blur
+- **Grid overlay:** Blueprint-style subtle grid lines
+- **Ambient blobs:** `body::before/::after` radial gradient blobs
+- **Typography:** Outfit (headings) + Inter (body) + Fira Code (terminal)
+- **Metric cards:** Top border accent using `::before` pseudo-element + CSS custom properties
+- **Charts:** Bar chart with tooltip on hover, circular SVG progress gauge
+- **Terminal viewport:** Dark `#020617` bg, monospace font, inset shadow
+- **Responsive breakpoints:** `1024px` (sidebar stacks), `768px` (charts stack)
+- **Custom scrollbar** styling
+
+### 7. `main.py` — CLI Entry Point (105 lines)
+- `argparse` based CLI: `--prefix`, `--start`, `--end`, `--pad`, `--sem`, `--program`, `--headless`
+- Orchestration loop: builds enrollment numbers, calls scraper, calls parser, accumulates records
+- Browser close detection in CLI mode
+- Saves to `data/RGPV_Result_{prefix}_{start}-{end}.xlsx`
+- Prints summary: Total / Pass / Fail / Not Found / Errors
+
+---
+
+## 🔌 API Reference (Implemented)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/scrape/start` | Start bulk scraping job |
+| `POST` | `/api/scrape/cancel` | Cancel running job |
+| `GET` | `/api/scrape/status` | Get current job status dict |
+| `GET` | `/api/scrape/download?path=...` | Download Excel file |
+| `WS` | `/api/ws` | WebSocket for real-time updates |
+| `GET` | `/docs` | Auto-generated FastAPI Swagger UI |
+
+### Request Body — `/api/scrape/start`
+```json
+{
+  "prefix": "0105IT2410",
+  "start": 1,
+  "end": 20,
+  "pad": 2,
+  "sem": "3",
+  "program": "B.Tech."
+}
+```
+
+### Status Response Schema
+```json
+{
+  "status": "running | idle | completed | cancelled | failed",
+  "total": 20,
+  "processed": 5,
+  "pass_count": 3,
+  "fail_count": 2,
+  "not_found_count": 0,
+  "error_count": 0,
+  "current_enrollment": "0105IT241005",
+  "excel_file_path": "data/RGPV_Result_0105IT2410_1-20.xlsx",
+  "records": [...],
+  "logs": [...]
+}
+```
+
+### WebSocket Message Types
+```json
+// Real-time log line
+{ "type": "log", "message": "[Scraper] Fetching 0105IT241005..." }
+
+// Full status update
+{ "type": "status", "data": { ...status_dict } }
+```
+
+---
+
+## 🚀 HOW TO RUN
+
+### Backend (FastAPI Server)
+```powershell
+# From project root
+venv\Scripts\python -m uvicorn backend.server:app --reload --port 8000
+```
+
+### Frontend (Vite Dev Server)
+```powershell
+cd frontend
+npm install
+npm run dev
+# Runs at http://localhost:5173
+```
+
+### CLI Mode (Standalone)
+```powershell
+venv\Scripts\python main.py --prefix 0105IT2410 --start 1 --end 20 --pad 2 --sem 3
+```
+
+### Production Build (Static Serving)
+```powershell
+cd frontend
+npm run build
+# Then backend serves frontend/dist/ at http://localhost:8000
+venv\Scripts\python backend\server.py
+```
+
+---
+
+## ⚠️ KNOWN LIMITATIONS & NOTES
+
+1. **Windows Only:** `msvcrt` module (used for terminal keypress detection) is Windows-specific. Linux/Mac would need alternative (e.g., `termios`).
+2. **Single Job at a Time:** Global `active_runner` variable + `runner_lock` — only one scraping job can run simultaneously.
+3. **In-Memory State:** Job state, records, and logs are all in-memory (`ScrapeJobRunner` object). No database persistence. Server restart = data lost.
+4. **No Authentication:** All API endpoints are open, no JWT/auth system.
+5. **CAPTCHA is Manual:** Human must solve CAPTCHAs in the visible Chromium window. No auto-OCR integration yet.
+6. **Selectors May Break:** RGPV HTML selectors (`#ctl00_ContentPlaceHolder1_...`) are hardcoded. May change when RGPV updates their portal.
+7. **Log Cap:** Both server-side (`active_runner.logs`) and client-side logs capped at 500 entries.
+8. **No Celery/Redis:** Task queue is just a Python `threading.Thread` + `queue.Queue`. Not distributed.
+
+---
+
+## 🗺️ PLANNED FUTURE ENHANCEMENTS (Not Yet Implemented)
+
+### Phase 2 — Persistence & Auth
+- [ ] SQLite or PostgreSQL database (SQLAlchemy ORM)
+- [ ] JWT Authentication (login/register for admins)
+- [ ] Job history — persist completed jobs to DB, list previous runs
+- [ ] Student directory — searchable, filterable table with DB-backed queries
+
+### Phase 3 — Distributed Architecture
+- [ ] Celery + Redis task queue for true background processing
+- [ ] Multiple concurrent scraping workers
+- [ ] Web-based CAPTCHA solver portal (stream CAPTCHA image to browser UI via WebSocket)
+- [ ] Proxy rotation support
+
+### Phase 4 — Advanced Analytics
+- [ ] Subject-wise fail rate table (sorted by highest failure %)
+- [ ] Branch comparison dashboard
+- [ ] CGPA trend tracking (semester-wise history per student)
+- [ ] PDF report generation
+
+### Phase 5 — Automation
+- [ ] CNN/OCR-based CAPTCHA auto-solver (TensorFlow/PyTorch)
+- [ ] Email/WhatsApp notification on job completion
+- [ ] Predictive CGPA risk modeling
+
+### Phase 6 — DevOps
+- [ ] Docker containerization (separate containers for backend + worker + frontend)
+- [ ] `docker-compose.yml` multi-service orchestration
+- [ ] CI/CD pipeline
 
 ---
 
@@ -277,7 +584,7 @@ ResultAI adopts a modern microservices-inspired architecture designed to run on 
 ```
        +---------------------------------------------+
        |             Client Web App                  |
-       |  (Vite / React / Tailwind / Recharts UI)    |
+       |  (Vite / React / Framer Motion / CSS)        |
        +--------------------+------------------------+
                             | HTTP / WebSockets
                             v
@@ -300,139 +607,37 @@ ResultAI adopts a modern microservices-inspired architecture designed to run on 
                                +------------------+
 ```
 
-### 11.1. Core Architectural Details
-1.  **Frontend Single Page Application (SPA):** Built with React + TypeScript, communicating with backend APIs and subscribing to WebSockets for live crawler progress.
-2.  **API Gateway (FastAPI):** Python framework handling authentication, ORM database connectivity, and serving high-frequency requests.
-3.  **Task Broker (Redis):** Acts as a message broker for Celery and coordinates WebSocket channels for real-time CAPTCHA forwarding.
-4.  **Distributed Workers (Celery + Playwright):** Worker nodes containing isolated chromium browser environments. These processes load the RGPV site, retrieve screenshots of captchas, wait for solutions, perform target selections, and pass raw HTML back to the database.
-
 ---
 
-## 12. Folder Structure
+## 12. UI/UX Requirements
 
-```
-result-ai/
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── api/                  # API router endpoints
-│   │   ├── core/                 # Config, security, db connection
-│   │   ├── models/               # SQLAlchemy Models
-│   │   ├── schemas/              # Pydantic serialization schemas
-│   │   ├── services/             # Core business logic
-│   │   │   ├── parser.py         # BS4 result HTML parser
-│   │   │   └── excel_writer.py   # Styled openpyxl Excel exporter
-│   │   └── main.py               # FastAPI entry point
-│   ├── Dockerfile
-│   └── requirements.txt
-├── workers/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── tasks.py              # Celery background tasks
-│   │   └── scraper.py            # Playwright automation classes
-│   ├── Dockerfile
-│   └── requirements.txt
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── assets/               # Standard CSS and images
-│   │   ├── components/           # Reusable UI widgets (Charts, grids)
-│   │   ├── pages/                # Page layouts (Dashboard, Jobs, Solvers)
-│   │   ├── services/             # API request wrappers
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── package.json
-│   ├── tailwind.config.js        # UI utility styles (if opted)
-│   └── vite.config.ts            # Fast client bundler config
-├── docker-compose.yml            # Multi-container local orchestration
-└── README.md
-```
-
----
-
-## 13. UI/UX Requirements
-
-### 13.1. Typography & Theme
-*   **Primary Font:** `Outfit` (sans-serif) for clean titles and headings; `Inter` for data tables and body fonts.
+### 12.1. Typography & Theme
+*   **Primary Font:** `Outfit` (sans-serif) for clean titles and headings; `Inter` for data tables and body fonts; `Fira Code` for terminal output.
 *   **Sleek Dark Mode (Default):**
-    *   Background: Dark slate `#0f172a` (zinc-900 / slate-900).
-    *   Card Accents: Semi-transparent glassmorphism panels with thin borders (`rgba(255,255,255,0.05)`) and backdrops.
-    *   Brand Colors: Violet gradient `#7c3aed` to Indigo `#4f46e5`.
-    *   Success Green: Emerald `#10b981`.
-    *   Fail Red: Crimson `#f43f5e`.
+    *   Background: Dark slate `#020817` (deepest bg), `#0F172A` (sidebar).
+    *   Card Accents: Semi-transparent glassmorphism panels with thin borders and inset shadows.
+    *   Brand Colors: Violet gradient `#7C3AED` to Indigo `#4F46E5`.
+    *   Success Green: Emerald `#22C55E`.
+    *   Fail Red: Crimson `#EF4444`.
+*   **Light Mode:** Full alternate palette via `body.light-theme` CSS class, persisted in `localStorage`.
 
-### 13.2. Responsive Grid Systems
-*   Dashboards must utilize flex/grid containers that rearrange seamlessly from 4-column widgets on high-res monitors to single columns on smartphones.
-*   Tables must support horizontal scrolling with pinned student names and enrollment fields.
+### 12.2. Responsive Grid Systems
+*   Dashboard uses CSS Grid: `340px sidebar + 1fr main` → stacks at `1024px`.
+*   Analytics charts grid (`1.8fr + 1fr`) → stacks at `768px`.
+*   Metric cards: `repeat(auto-fit, minmax(130px, 1fr))`.
 
-### 13.3. micro-animations
-*   Pulse indicators on active scraper status lines.
-*   Smooth page transitions using framer-motion or standard CSS fade effects.
-*   Hover transformations (slight upscale and shadow shift) on dashboard cards.
-
----
-
-## 14. Pages and Components (Frontend)
-
-### 14.1. Pages
-1.  **Overview Dashboard:** High-level metrics view. Houses line charts, performance statistics, and overall passing rates.
-2.  **Scraper Control Room:** Interface to start new bulk jobs, view queued tasks, monitor current scraper console logs, and pause threads.
-3.  **Captcha Solve Station:** Active visual page with live captchas. A dashboard operator can leave this open to input captchas for backend workers sequentially.
-4.  **Student Explorer Directory:** Searchable table list of students with query controls. Clicking a student shows their full profile.
-
-### 14.2. Key Components
-*   **MetricCard:** Dynamic card representing a number (e.g., pass rate), trend percentage, and mini-icon.
-*   **ResultTable:** Advanced grid with filtering headers, status tags, and sorting options.
-*   **CaptchaOverlay:** A key-locked pop-up modal requiring inputs that blocks page actions when a captcha task needs instant manual resolver attention.
-*   **GradeGrid:** Reusable visual card detailing subject codes, subject names, credit hours, and grades.
+### 12.3. Micro-animations (All via Framer Motion)
+*   Header, sidebar, main panel: fade-in + slide on mount.
+*   Metric cards: staggered fade-in.
+*   Circular gauge: `stroke-dashoffset` CSS transition.
+*   Bar chart: height transition on mount.
+*   Modal: scale + opacity spring animation on enter/exit.
+*   Status dot: CSS `pulse` keyframe animation when running.
+*   Buttons: `whileHover` scale + `whileTap` shrink.
 
 ---
 
-## 15. User Stories
-
-### Story 1: Bulk Fetch Initialization
-*   **As an** Engineering Department HoD,
-*   **I want to** start a bulk result fetch job by providing an enrollment number range, semester, and program,
-*   **So that** I do not have to copy and paste results one-by-one.
-*   *Acceptance Criteria:*
-    *   Form requires valid inputs (prefix, start roll, end roll, sem, and program).
-    *   Displays validation warnings if start roll >= end roll.
-    *   Successfully schedules a task in the background and shows a real-time progress indicator.
-
-### Story 2: Captcha Resolution Flow
-*   **As a** System Operator,
-*   **I want to** solve CAPTCHAs via a web overlay during a running scraper job,
-*   **So that** the crawler can bypass RGPV's portal validation.
-*   *Acceptance Criteria:*
-    *   A captcha modal overlay is displayed whenever the scraper hits the check page.
-    *   Submitting the CAPTCHA sends the answer immediately via WebSockets to the Playwright thread.
-    *   If incorrect CAPTCHA is entered, shows a "retry" alert and refreshes the CAPTCHA block in-place.
-
-### Story 3: Performance Analysis
-*   **As a** College Director,
-*   **I want to** see which subjects have the highest failure rates,
-*   **So that** I can direct faculty to focus on target subject revisions.
-*   *Acceptance Criteria:*
-    *   Dashboard provides a sorted list of subjects based on failure percentage.
-    *   Clicking a subject shows the names and roll numbers of all students who failed that subject.
-
----
-
-## 16. Validation Rules
-
-### 16.1. Input Validation (Form Fields)
-*   **Enrollment Prefix:** Must match alphanumeric format (e.g., `^0105[A-Z]{2}\d{4}$` - College Code + Branch Code + Year Code).
-*   **Roll Number Range:** Start roll and End roll must be positive integers between `1` and `999`. Start roll must be less than or equal to End roll.
-*   **Semester Value:** Restricted to selection integers between `1` and `8`.
-*   **CAPTCHA Input:** Must be alphanumeric, exactly 5 characters long (based on current RGPV captcha parameters).
-
-### 16.2. Scraper Failures & Retries
-*   If student result query displays "Incorrect Captcha", repeat loop up to 3 times before setting task state to FAIL.
-*   If page returns "Result Not Found" (HTTP/HTML match), stop retrying immediately, record status as `NOT_FOUND`, and move to the next student.
-
----
-
-## 17. Security Requirements
+## 13. Security Requirements
 
 *   **Role-Based Access Control (RBAC):** Restrict scraping triggers and data exports to authenticated administrators (`FACULTY` or `ADMIN` roles). Standard students can only view search interfaces.
 *   **Data Protection:** Student result pages and database records must be securely stored. No API endpoint should expose raw HTML files to unauthenticated web clients.
@@ -440,7 +645,7 @@ result-ai/
 
 ---
 
-## 18. Deployment Requirements
+## 14. Deployment Requirements
 
 *   **Docker Containerization:** Separate Dockerfiles for frontend, backend, and background workers.
     ```yaml
@@ -457,7 +662,7 @@ result-ai/
 
 ---
 
-## 19. Future Enhancements
+## 15. Future Enhancements
 
 *   **Convolutional Neural Network (CNN) CAPTCHA Solver:** Train a light TensorFlow or PyTorch OCR model directly on fetched RGPV Captchas to fully automate result harvesting.
 *   **Automated Email/WhatsApp Notifications:** Integrate WhatsApp/Email SMS gateways to instantly alert students once their branch results are updated and parsed.

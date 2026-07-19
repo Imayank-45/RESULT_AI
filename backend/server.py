@@ -37,6 +37,8 @@ app.add_middleware(
 update_queue = queue.Queue()
 active_runner: Optional['ScrapeJobRunner'] = None
 runner_lock = threading.Lock()
+last_job_status: Optional[dict] = None
+background_tasks = set()
 
 class ConnectionManager:
     def __init__(self):
@@ -214,20 +216,23 @@ class ScrapeJobRunner:
                     self.processed += 1
                     self.notify_progress()
 
-                if not self._cancel_requested and self.status == "running":
-                    print("\n[System] Compiling results to Excel spreadsheet...")
-                    os.makedirs("data", exist_ok=True)
-                    out_path = f"data/RGPV_Result_{self.prefix}_{self.start}-{self.end}.xlsx"
-                    write_excel(self.records, out_path)
-                    self.excel_file_path = out_path
-                    self.status = "completed"
-                    print(f"[System] Job finished successfully! Excel file saved to: {out_path}")
+            if not self._cancel_requested and self.status == "running":
+                print("\n[System] Compiling results to Excel spreadsheet...")
+                os.makedirs("data", exist_ok=True)
+                out_path = f"data/RGPV_Result_{self.prefix}_{self.start}-{self.end}.xlsx"
+                write_excel(self.records, out_path)
+                self.excel_file_path = out_path
+                self.status = "completed"
+                print(f"[System] Job finished successfully! Excel file saved to: {out_path}")
         except Exception as e:
             self.status = "failed"
             print(f"[System] Critical error occurred: {e}")
         finally:
             self.current_enrollment = ""
             self.notify_progress()
+            # Save status to global cache to preserve it
+            global last_job_status
+            last_job_status = self.get_status_dict()
             # Release runner lock
             global active_runner
             with runner_lock:
@@ -279,8 +284,10 @@ def cancel_scraping_job():
 
 @app.get("/api/scrape/status")
 def get_scraping_status():
-    global active_runner
+    global active_runner, last_job_status
     if active_runner is None:
+        if last_job_status:
+            return last_job_status
         return {
             "status": "idle",
             "total": 0,
@@ -338,9 +345,11 @@ async def broadcast_updates():
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     # Send initial status
-    global active_runner
+    global active_runner, last_job_status
     if active_runner:
         await websocket.send_json({"type": "status", "data": active_runner.get_status_dict()})
+    elif last_job_status:
+        await websocket.send_json({"type": "status", "data": last_job_status})
     else:
         await websocket.send_json({"type": "status", "data": {
             "status": "idle",
@@ -367,7 +376,9 @@ async def websocket_endpoint(websocket: WebSocket):
 # Start background broadcast task on startup
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(broadcast_updates())
+    task = asyncio.create_task(broadcast_updates())
+    background_tasks.add(task)
+    task.add_done_callback(background_tasks.discard)
 
 
 # Serve static frontend files if built
