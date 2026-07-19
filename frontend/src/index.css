@@ -910,3 +910,9 @@ body.light-theme .subject-grade {
 body.light-theme .circular-bg {
   stroke: rgba(15, 23, 42, 0.06);
 }
+
+body.light-theme .btn-secondary:hover {
+  background: #E2E8F0;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
