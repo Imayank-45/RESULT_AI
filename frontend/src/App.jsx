@@ -835,6 +835,68 @@ function App() {
             </motion.section>
           )}
 
+          {/* TOPPER CARD */}
+          {jobState.records && jobState.records.filter(r => !r.not_found && r.sgpa).length > 0 && (() => {
+            const validStudents = jobState.records.filter(r => !r.not_found && r.sgpa);
+            const topper = validStudents.reduce((best, cur) => (parseFloat(cur.sgpa) > parseFloat(best.sgpa) ? cur : best), validStudents[0]);
+            return (
+              <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-panel"
+                style={{ position: 'relative', overflow: 'hidden', borderLeft: '4px solid var(--primary)' }}
+              >
+                {/* Ambient glow */}
+                <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+                  {/* Left: Trophy + Info */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{
+                      width: '52px', height: '52px', borderRadius: '14px',
+                      background: 'linear-gradient(135deg, rgba(250,204,21,0.2) 0%, rgba(245,158,11,0.15) 100%)',
+                      border: '1px solid rgba(250,204,21,0.25)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 16px rgba(250,204,21,0.1)'
+                    }}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FACC15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                        <path d="M4 22h16"/>
+                        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
+                        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
+                        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#FACC15', marginBottom: '4px' }}>🏆 Class Topper</p>
+                      <h3 style={{ fontSize: '18px', fontWeight: '850', color: 'var(--title-color)', lineHeight: '1.2' }}>{topper.name}</h3>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Enrollment: {topper.enrollment}</p>
+                    </div>
+                  </div>
+
+                  {/* Right: Stats */}
+                  <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>SGPA</p>
+                      <p style={{ fontSize: '22px', fontWeight: '850', color: 'var(--success)', fontFamily: 'var(--font-heading)' }}>{topper.sgpa}</p>
+                    </div>
+                    <div style={{ width: '1px', height: '36px', background: 'var(--card-border)' }}></div>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>CGPA</p>
+                      <p style={{ fontSize: '22px', fontWeight: '850', color: 'var(--title-color)', fontFamily: 'var(--font-heading)' }}>{topper.cgpa || 'N/A'}</p>
+                    </div>
+                    <div style={{ width: '1px', height: '36px', background: 'var(--card-border)' }}></div>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Result</p>
+                      <span className={`badge ${topper.result === 'PASS' ? 'pass' : topper.result === 'FAIL' ? 'fail' : 'unknown'}`} style={{ marginTop: '4px' }}>{topper.result}</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            );
+          })()}
+
           {/* LIVE TERMINAL LOGS (Vercel Style Vibe) */}
           <section className="glass-panel terminal-card">
             <div className="terminal-header">
