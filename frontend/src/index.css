@@ -179,7 +179,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 22px;
   font-weight: 850;
   color: var(--title-color);
-  background: linear-gradient(to right, #FFFFFF, #C8B6FF);
+  background: linear-gradient(to right, var(--title-color), #7C3AED);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }

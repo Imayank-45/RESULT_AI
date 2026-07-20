@@ -66,7 +66,120 @@ venv\Scripts\python main.py --prefix 0105IT2410 --start 1 --end 20 --pad 2 --sem
 ## Project Structure
 
 *   `main.py` - Command-line entry point and orchestration loop.
-*   `scraper.py` - Playwright automation, browser session management, and CAPTCHA polling logic.
-*   `parser.py` - BeautifulSoup logic for parsing result sheets, grades, names, and CGPA/SGPA values.
-*   `excel_writer.py` - Excel format generator using `openpyxl` to build output spreadsheets.
+*   `automation/scraper.py` - Playwright automation, browser session management, and CAPTCHA polling logic.
+*   `automation/parser.py` - BeautifulSoup logic for parsing result sheets, grades, names, and CGPA/SGPA values.
+*   `automation/excel_writer.py` - Excel format generator using `openpyxl` to build output spreadsheets.
+*   `backend/server.py` - FastAPI server with REST API and WebSocket support.
+*   `frontend/` - Vite/React frontend application.
 *   `requirements.txt` - Dependency versions mapping.
+
+---
+
+## 📊 AI Report Generator
+
+A standalone module that automatically generates **professional 40–50 page PDF reports** from scraped result data — rivaling Power BI, McKinsey, and Deloitte analytics reports in visual quality.
+
+### Features
+- **18 report sections**: Cover page, clickable TOC, Executive Summary, Branch Analysis, Subject Analysis, Toppers, Student Details, Grade Distribution, Pass Percentage Gauge, Backlog Analysis, Heatmaps, Risk Analysis, Improvement Analysis, Comparison Analysis, AI Insights (30–50), and AI Recommendations (20+).
+- **Premium charts** (bar, pie, donut, radar, heatmap, gauge, histogram, scatter, line/area) rendered via Matplotlib at 200 DPI
+- **Clickable Table of Contents** with dot leaders — each entry navigates to its section bookmark
+- **PDF outline bookmarks** (visible in Acrobat/Evince sidebar)
+- **Rule-based AI engine** — generates natural-language observations and prioritized recommendations without any external API calls
+- **Comparison mode** — supply a previous Excel file to get semester-over-semester delta charts
+
+### Extra Dependencies (one-time install)
+```powershell
+venv\Scripts\python.exe -m pip install reportlab matplotlib
+```
+
+### CLI Usage
+
+```powershell
+# Basic report from Excel file
+venv\Scripts\python.exe -m report_generator.generate_report --input data/RGPV_Result_0105IT2410_1-20.xlsx
+
+# With RGPV branding + semester
+venv\Scripts\python.exe -m report_generator.generate_report `
+  --input data/RGPV_Result_0105IT2410_1-20.xlsx `
+  --college "RGPV Bhopal" `
+  --department "Information Technology" `
+  --semester 3
+
+# With comparison (semester-over-semester)
+venv\Scripts\python.exe -m report_generator.generate_report `
+  --input data/current.xlsx `
+  --compare data/previous.xlsx `
+  --college "RGPV Bhopal"
+```
+
+#### CLI Arguments
+
+| Argument | Description | Default |
+| :--- | :--- | :--- |
+| `--input` | Path to result Excel file | **Required** |
+| `--compare` | Path to previous result Excel (comparison mode) | Optional |
+| `--college` | College name for cover page | `Rajiv Gandhi Proudyogiki Vishwavidyalaya` |
+| `--department` | Department name | `Department of Information Technology` |
+| `--semester` | Semester number | *(blank)* |
+| `--program` | Program name | `B.Tech.` |
+| `--output-dir` | Output directory for PDF | `data/reports` |
+| `--job-id` | Job identifier string | *(auto-generated)* |
+
+### API Integration (Optional)
+
+The report generator exposes a FastAPI router that can be mounted in `backend/server.py`:
+
+```python
+from report_generator.api import report_router
+app.include_router(report_router, prefix="/api/report")
+```
+
+**Endpoints:**
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/report/generate` | Generate PDF from Excel path |
+| `GET` | `/api/report/download?path=…` | Download the generated PDF |
+| `GET` | `/api/report/status` | Check generation status |
+
+### Module Architecture
+
+```
+report_generator/
+├── __init__.py              # Public API: from report_generator import generate_report
+├── requirements.txt         # reportlab, matplotlib, numpy
+├── config.py                # Colors, fonts, page dimensions, branch code mappings
+├── data_loader.py           # Load from Excel / in-memory records → ReportDataset
+├── analytics_engine.py      # Pure stats: SGPA, pass%, backlogs, heatmap, comparison
+├── ai_insights.py           # Rule-based 30–50 insights + 20+ recommendations
+├── chart_renderer.py        # Matplotlib chart factory (10 chart types, 200 DPI)
+├── pdf_builder.py           # ReportLab engine: pages, header/footer, bookmarks
+├── generate_report.py       # Orchestrator + CLI entry point
+├── api.py                   # FastAPI router (optional mount)
+└── report_sections/         # 19 modular section renderers
+    ├── cover_page.py
+    ├── table_of_contents.py
+    ├── executive_summary.py
+    ├── overall_statistics.py
+    ├── branch_analysis.py
+    ├── semester_analysis.py
+    ├── subject_analysis.py
+    ├── topper_analysis.py
+    ├── student_pages.py
+    ├── grade_distribution.py
+    ├── pass_percentage.py
+    ├── backlog_analysis.py
+    ├── heatmaps.py
+    ├── risk_analysis.py
+    ├── improvement_analysis.py
+    ├── comparison_analysis.py
+    ├── ai_insights_section.py
+    └── ai_recommendations.py
+```
+
+### Output
+
+Generated PDFs are saved to `data/reports/` with the filename pattern:
+```
+ResultAI_Report_<prefix>_<timestamp>.pdf
+```
+Example: `ResultAI_Report_0105IT2410_20260719_233720.pdf`

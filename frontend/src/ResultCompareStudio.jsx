@@ -654,7 +654,7 @@ export default function ResultCompareStudio() {
       {/* Title Header */}
       <div className="table-section-header" style={{ marginBottom: '10px' }}>
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '850', background: 'linear-gradient(to right, #FFFFFF, #C8B6FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '850', background: 'linear-gradient(to right, var(--title-color), #7C3AED)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Result Compare Studio
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>

@@ -42,10 +42,55 @@ function App() {
   const [selectedRecord, setSelectedRecord] = useState(null);
 
   // Navigation tab state
-  const [activeTab, setActiveTab] = useState('extractor'); // extractor or compare
+  const [activeTab, setActiveTab] = useState('extractor'); // extractor, compare, or report
+
+  // Report Generator state
+  const [reportForm, setReportForm] = useState({
+    excel_path: '',
+    compare_path: '',
+    college_name: 'Rajiv Gandhi Proudyogiki Vishwavidyalaya',
+    department: 'Department of Information Technology',
+    semester: '',
+    program: 'B.Tech.',
+    job_id: '',
+    max_student_pages: 100
+  });
+  const [reportStatus, setReportStatus] = useState('idle'); // idle, generating, done, error
+  const [reportPath, setReportPath] = useState(null);
+  const [reportError, setReportError] = useState(null);
+  const [reportLogs, setReportLogs] = useState([]);
 
   // Terminal scroll reference
   const terminalEndRef = useRef(null);
+
+  // File Upload refs & state for Report Generator
+  const reportFileInputRef = useRef(null);
+  const reportCompareInputRef = useRef(null);
+  const [uploadingFile, setUploadingFile] = useState(null); // null, 'excel', or 'compare'
+
+  const handleReportFileUpload = async (file, type) => {
+    setUploadingFile(type);
+    setReportLogs(l => [...l, `[INFO] Uploading file: ${file.name}...`]);
+    try {
+      const res = await fetch(`${API_BASE}/report/upload?filename=${encodeURIComponent(file.name)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: file
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Upload failed');
+      
+      setReportForm(f => ({
+        ...f,
+        [type === 'excel' ? 'excel_path' : 'compare_path']: data.excel_path
+      }));
+      setReportLogs(l => [...l, `[OK] File uploaded successfully: ${data.excel_path}`]);
+    } catch (err) {
+      setReportLogs(l => [...l, `[ERR] Upload failed: ${err.message}`]);
+    } finally {
+      setUploadingFile(null);
+    }
+  };
 
   // Sync theme with body class and localStorage
   useEffect(() => {
@@ -461,6 +506,32 @@ function App() {
           >
             Result Compare Studio
           </button>
+          <button
+            className="tab-btn"
+            style={{
+              background: activeTab === 'report' ? 'linear-gradient(135deg, #059669, #0CA5A5)' : 'transparent',
+              color: activeTab === 'report' ? '#FFFFFF' : 'var(--text-muted)',
+              border: 'none',
+              padding: '6px 14px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '700',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            onClick={() => setActiveTab('report')}
+          >
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            AI Report Generator
+          </button>
         </div>
         <div className="header-actions">
           {/* Theme Toggle Button */}
@@ -497,7 +568,497 @@ function App() {
       </motion.header>
 
       {/* DASHBOARD BODY */}
-      {activeTab === 'extractor' ? (
+      {activeTab === 'report' && (
+        <motion.div
+          key="report"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.35 }}
+          style={{ padding: '28px 32px', maxWidth: '960px', margin: '0 auto', width: '100%' }}
+        >
+          {/* Page Title */}
+          <div style={{ marginBottom: '28px' }}>
+            <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ background: 'linear-gradient(135deg, #059669, #0CA5A5)', borderRadius: '10px', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="20" height="20" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </span>
+              AI Report Generator
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13.5px', marginTop: '6px', marginLeft: '52px' }}>
+              Generate a professional 40–50 page PDF report with charts, AI insights, and recommendations from scraped Excel data.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
+
+            {/* LEFT: Configuration Form */}
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-main)', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="14" height="14" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+                Report Configuration
+              </h3>
+
+              {/* Drag & Drop Main Excel */}
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '7px' }}>
+                  Result Excel File <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    if (reportStatus === 'generating' || uploadingFile) return;
+                    const file = e.dataTransfer.files[0];
+                    if (file) await handleReportFileUpload(file, 'excel');
+                  }}
+                  onClick={() => {
+                    if (reportStatus !== 'generating' && !uploadingFile) reportFileInputRef.current.click();
+                  }}
+                  style={{
+                    border: '2px dashed var(--card-border)',
+                    borderRadius: '12px',
+                    padding: '24px 16px',
+                    textAlign: 'center',
+                    cursor: reportStatus === 'generating' || uploadingFile ? 'not-allowed' : 'pointer',
+                    background: 'rgba(255,255,255,0.01)',
+                    transition: 'var(--transition-smooth)',
+                    borderColor: reportForm.excel_path ? 'var(--success)' : 'var(--card-border)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (reportStatus !== 'generating' && !uploadingFile) e.currentTarget.style.borderColor = 'var(--primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = reportForm.excel_path ? 'var(--success)' : 'var(--card-border)';
+                  }}
+                >
+                  <input
+                    type="file"
+                    ref={reportFileInputRef}
+                    style={{ display: 'none' }}
+                    accept=".xlsx,.xls"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (file) await handleReportFileUpload(file, 'excel');
+                    }}
+                  />
+                  {uploadingFile === 'excel' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '18px', animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
+                      <p style={{ fontWeight: '700', fontSize: '12px', color: 'var(--primary)' }}>Uploading Excel file...</p>
+                    </div>
+                  ) : reportForm.excel_path ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '22px' }}>🟢</span>
+                      <p style={{ fontWeight: '800', fontSize: '13px', color: 'var(--success)' }}>Excel Loaded Successfully</p>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{reportForm.excel_path.split('/').pop() || reportForm.excel_path.split('\\').pop()}</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '22px', opacity: 0.7 }}>📊</span>
+                      <p style={{ fontWeight: '800', fontSize: '13px', color: 'var(--text-main)' }}>Drag & Drop Excel here or Click</p>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Only .xlsx / .xls files supported</p>
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  type="text"
+                  value={reportForm.excel_path}
+                  onChange={e => setReportForm(f => ({ ...f, excel_path: e.target.value }))}
+                  placeholder="Or type Excel path (e.g. data/RGPV_Result_xxxx.xlsx)"
+                  disabled={reportStatus === 'generating'}
+                  style={{ width: '100%', boxSizing: 'border-box', marginTop: '8px', fontSize: '12.5px' }}
+                />
+
+                {jobState.excel_file_path && (
+                  <button
+                    type="button"
+                    onClick={() => setReportForm(f => ({ ...f, excel_path: jobState.excel_file_path }))}
+                    style={{ background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)', color: '#059669', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', marginTop: '6px', fontWeight: '700' }}
+                  >
+                    Use last scrape: {jobState.excel_file_path.split('/').pop() || jobState.excel_file_path.split('\\').pop()}
+                  </button>
+                )}
+              </div>
+
+              {/* Drag & Drop Compare Excel */}
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '7px' }}>
+                  Previous Excel (Comparison) <span style={{ color: 'var(--text-muted)', fontWeight: '400' }}>optional</span>
+                </label>
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    if (reportStatus === 'generating' || uploadingFile) return;
+                    const file = e.dataTransfer.files[0];
+                    if (file) await handleReportFileUpload(file, 'compare');
+                  }}
+                  onClick={() => {
+                    if (reportStatus !== 'generating' && !uploadingFile) reportCompareInputRef.current.click();
+                  }}
+                  style={{
+                    border: '2px dashed var(--card-border)',
+                    borderRadius: '12px',
+                    padding: '16px 12px',
+                    textAlign: 'center',
+                    cursor: reportStatus === 'generating' || uploadingFile ? 'not-allowed' : 'pointer',
+                    background: 'rgba(255,255,255,0.01)',
+                    transition: 'var(--transition-smooth)',
+                    borderColor: reportForm.compare_path ? 'var(--info)' : 'var(--card-border)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (reportStatus !== 'generating' && !uploadingFile) e.currentTarget.style.borderColor = 'var(--primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = reportForm.compare_path ? 'var(--info)' : 'var(--card-border)';
+                  }}
+                >
+                  <input
+                    type="file"
+                    ref={reportCompareInputRef}
+                    style={{ display: 'none' }}
+                    accept=".xlsx,.xls"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (file) await handleReportFileUpload(file, 'compare');
+                    }}
+                  />
+                  {uploadingFile === 'compare' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <p style={{ fontWeight: '700', fontSize: '11.5px', color: 'var(--info)' }}>Uploading comparison file...</p>
+                    </div>
+                  ) : reportForm.compare_path ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <p style={{ fontWeight: '800', fontSize: '12px', color: 'var(--info)' }}>Comparison Excel Loaded</p>
+                      <p style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>{reportForm.compare_path.split('/').pop() || reportForm.compare_path.split('\\').pop()}</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <p style={{ fontWeight: '700', fontSize: '12px', color: 'var(--text-muted)' }}>Drag & Drop Comparison Excel here or Click</p>
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  type="text"
+                  value={reportForm.compare_path}
+                  onChange={e => setReportForm(f => ({ ...f, compare_path: e.target.value }))}
+                  placeholder="Or type comparison Excel path (optional)"
+                  disabled={reportStatus === 'generating'}
+                  style={{ width: '100%', boxSizing: 'border-box', marginTop: '8px', fontSize: '12.5px' }}
+                />
+              </div>
+
+              {/* College Name */}
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '7px' }}>College Name</label>
+                <input
+                  type="text"
+                  value={reportForm.college_name}
+                  onChange={e => setReportForm(f => ({ ...f, college_name: e.target.value }))}
+                  disabled={reportStatus === 'generating'}
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Department */}
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '7px' }}>Department</label>
+                <input
+                  type="text"
+                  value={reportForm.department}
+                  onChange={e => setReportForm(f => ({ ...f, department: e.target.value }))}
+                  disabled={reportStatus === 'generating'}
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Semester + Program row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                <div className="form-group">
+                  <label style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '7px' }}>Semester</label>
+                  <select
+                    value={reportForm.semester}
+                    onChange={e => setReportForm(f => ({ ...f, semester: e.target.value }))}
+                    disabled={reportStatus === 'generating'}
+                  >
+                    <option value="">All Semesters</option>
+                    {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={String(n)}>Semester {n}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '7px' }}>Program</label>
+                  <select
+                    value={reportForm.program}
+                    onChange={e => setReportForm(f => ({ ...f, program: e.target.value }))}
+                    disabled={reportStatus === 'generating'}
+                  >
+                    <option>B.Tech.</option>
+                    <option>B.E.</option>
+                    <option>M.Tech.</option>
+                    <option>MCA</option>
+                    <option>MBA</option>
+                    <option>B.Pharmacy</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Report Size Selector */}
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '7px' }}>
+                  Report Size / Page Length
+                </label>
+                <select
+                  value={reportForm.max_student_pages}
+                  onChange={e => setReportForm(f => ({ ...f, max_student_pages: Number(e.target.value) }))}
+                  disabled={reportStatus === 'generating'}
+                >
+                  <option value={10}>Summary (~15 Pages, Top 10 Student Details)</option>
+                  <option value={30}>Standard (~25 Pages, Top 30 Student Details)</option>
+                  <option value={100}>Detailed (~50 Pages, Top 100 Student Details)</option>
+                  <option value={10000}>Comprehensive (40-50+ Pages, All Student Details)</option>
+                </select>
+              </div>
+
+              {/* Generate Button */}
+              <motion.button
+                whileHover={{ scale: reportStatus === 'generating' ? 1 : 1.02 }}
+                whileTap={{ scale: reportStatus === 'generating' ? 1 : 0.97 }}
+                disabled={reportStatus === 'generating' || !reportForm.excel_path.trim()}
+                onClick={async () => {
+                  setReportStatus('generating');
+                  setReportPath(null);
+                  setReportError(null);
+                  setReportLogs(['[INFO] Sending request to report generator...']);
+                  try {
+                    const body = {
+                      excel_path: reportForm.excel_path.trim(),
+                      college_name: reportForm.college_name,
+                      department: reportForm.department,
+                      semester: reportForm.semester,
+                      program: reportForm.program,
+                      job_id: reportForm.job_id,
+                      max_student_pages: reportForm.max_student_pages
+                    };
+                    if (reportForm.compare_path.trim()) body.compare_path = reportForm.compare_path.trim();
+                    setReportLogs(l => [...l, '[INFO] Loading Excel data and computing analytics...']);
+                    const res = await fetch(`${API_BASE}/report/generate`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(body)
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || 'Generation failed');
+                    setReportLogs(l => [...l, '[OK] Rendering 18 report sections...', '[OK] Building PDF document...', '[OK] Cleanup complete.', `[SUCCESS] Report saved: ${data.report_path}`]);
+                    setReportPath(data.report_path);
+                    setReportStatus('done');
+                  } catch (err) {
+                    setReportError(err.message);
+                    setReportLogs(l => [...l, `[ERR] ${err.message}`]);
+                    setReportStatus('error');
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '13px',
+                  background: reportStatus === 'generating'
+                    ? 'rgba(5,150,105,0.25)'
+                    : 'linear-gradient(135deg, #059669, #0CA5A5)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: '800',
+                  cursor: reportStatus === 'generating' || !reportForm.excel_path.trim() ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  opacity: !reportForm.excel_path.trim() ? 0.5 : 1
+                }}
+              >
+                {reportStatus === 'generating' ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>
+                    Generating Report...
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    Generate PDF Report
+                  </>
+                )}
+              </motion.button>
+            </div>
+
+            {/* RIGHT: Status + Output */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+              {/* Info cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                {[
+                  { label: '18 Sections', icon: '📋', desc: 'Cover to AI Recs' },
+                  { label: '10 Chart Types', icon: '📊', desc: 'Bar, Pie, Heatmap...' },
+                  { label: '40–50 Pages', icon: '📄', desc: 'PDF with bookmarks' }
+                ].map(({ label, icon, desc }) => (
+                  <div key={label} className="glass-panel" style={{ padding: '16px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '22px', marginBottom: '4px' }}>{icon}</div>
+                    <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-main)' }}>{label}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Live terminal log */}
+              <div className="glass-panel" style={{ padding: '20px' }}>
+                <h3 style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg width="12" height="12" fill="none" stroke="#0CA5A5" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+                  </svg>
+                  Generation Log
+                </h3>
+                <div style={{
+                  background: '#0a0f1a',
+                  borderRadius: '8px',
+                  padding: '14px',
+                  minHeight: '160px',
+                  maxHeight: '220px',
+                  overflowY: 'auto',
+                  fontFamily: 'monospace',
+                  fontSize: '11.5px',
+                  lineHeight: '1.7'
+                }}>
+                  {reportLogs.length === 0 ? (
+                    <span style={{ color: '#475569' }}>Waiting for report generation to start...</span>
+                  ) : (
+                    reportLogs.map((log, i) => {
+                      const color = log.startsWith('[ERR]') ? '#EF4444'
+                        : log.startsWith('[SUCCESS]') ? '#22C55E'
+                        : log.startsWith('[OK]') ? '#38BDF8'
+                        : log.startsWith('[WARN]') ? '#F59E0B'
+                        : '#94A3B8';
+                      return <div key={i} style={{ color }}>{log}</div>;
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Download Result */}
+              <AnimatePresence>
+                {reportStatus === 'done' && reportPath && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="glass-panel"
+                    style={{ padding: '22px', border: '1px solid rgba(5,150,105,0.35)', background: 'rgba(5,150,105,0.06)' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                      <div style={{ background: 'rgba(5,150,105,0.2)', borderRadius: '10px', padding: '10px', display: 'flex' }}>
+                        <svg width="22" height="22" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                          <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '800', fontSize: '15px', color: '#059669' }}>Report Generated!</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{reportPath.split('\\').pop() || reportPath.split('/').pop()}</div>
+                      </div>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        const filename = reportPath.split('\\').pop() || reportPath.split('/').pop();
+                        window.open(`${API_BASE}/report/download?path=${encodeURIComponent(filename)}`, '_blank');
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        background: 'linear-gradient(135deg, #059669, #0CA5A5)',
+                        border: 'none',
+                        borderRadius: '9px',
+                        color: '#fff',
+                        fontSize: '13px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      Download PDF Report
+                    </motion.button>
+                  </motion.div>
+                )}
+
+                {reportStatus === 'error' && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="glass-panel"
+                    style={{ padding: '18px', border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.06)' }}
+                  >
+                    <div style={{ color: '#EF4444', fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="16" height="16" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                      </svg>
+                      Generation Failed
+                    </div>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '8px', marginBottom: '0' }}>{reportError}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '8px', marginBottom: '0' }}>
+                      Make sure the backend has the report router mounted, or the backend /api/report/generate endpoint is reachable.
+                      <br/>Alternatively, run the report from the CLI:<br/>
+                      <code style={{ color: '#38BDF8', fontSize: '10.5px' }}>venv\Scripts\python.exe -m report_generator.generate_report --input {reportForm.excel_path}</code>
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Section preview list */}
+              <div className="glass-panel" style={{ padding: '20px' }}>
+                <h3 style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Report Contents</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  {[
+                    '01. Cover Page', '02. Table of Contents', '03. Executive Summary',
+                    '04. Overall Statistics', '05. Branch Analysis', '06. Semester Analysis',
+                    '07. Subject Analysis', '08. Topper Analysis', '09. Student Details',
+                    '10. Grade Distribution', '11. Pass % Gauge', '12. Backlog Analysis',
+                    '13. Heatmaps', '14. Risk Analysis', '15. Improvement Analysis',
+                    '16. Comparison Analysis', '17. AI Insights (30–50)', '18. AI Recommendations'
+                  ].map((s, i) => (
+                    <div key={i} style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '4px 8px', borderRadius: '5px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: '#059669', fontWeight: '700', fontSize: '10px' }}>✓</span> {s}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'extractor' && (
         <div className="dashboard-grid">
         {/* LEFT COLUMN: SIDEBAR CONTROL PANEL */}
         <motion.aside 
@@ -1044,7 +1605,9 @@ function App() {
           </section>
         </motion.main>
       </div>
-      ) : (
+      )}
+
+      {activeTab === 'compare' && (
         <ResultCompareStudio />
       )}
 

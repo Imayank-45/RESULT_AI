@@ -11,11 +11,15 @@ Write-Host "   ResultAI - Starting Frontend and Backend" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
+# --- Build Frontend first to ensure latest assets are served statically ---
+Write-Host "[0/2] Building frontend assets (npm run build)..." -ForegroundColor Yellow
+Start-Process cmd -ArgumentList "/c", "cd /d `"$FRONTEND_DIR`" && npm run build" -Wait -NoNewWindow
+
 # --- Start Backend in a new window ---
 Write-Host "[1/2] Starting Backend (FastAPI on localhost:8000)..." -ForegroundColor Yellow
 Start-Process cmd -ArgumentList "/k", "title ResultAI Backend && `"$VENV_PYTHON`" `"$SERVER_SCRIPT`""
 
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 4
 
 # --- Start Frontend in a new window ---
 Write-Host "[2/2] Starting Frontend (Vite on localhost:5173)..." -ForegroundColor Yellow

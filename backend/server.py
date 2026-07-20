@@ -20,9 +20,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from automation.scraper import RGPVScraper
 from automation.parser import parse_result_html, ResultNotFound
 from automation.excel_writer import write_excel
+from report_generator.api import report_router
 
 # Initialize FastAPI
 app = FastAPI(title="ResultAI API", version="1.0.0")
+
+# Mount report generator router
+app.include_router(report_router, prefix="/api/report")
 
 # Enable CORS for frontend development server
 app.add_middleware(
