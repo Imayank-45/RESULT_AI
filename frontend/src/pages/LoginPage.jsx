@@ -57,18 +57,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px',
-      background: 'var(--bg-dark)',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      {/* Background ambient blobs */}
+    <div className="login-page-container">
+      {/* Background ambient glowing lights & tech grid */}
       <div className="grid-overlay"></div>
+      <div className="bg-glow-orb-1"></div>
+      <div className="bg-glow-orb-2"></div>
+      <div className="bg-glow-orb-center"></div>
 
       <motion.div 
         initial={{ opacity: 0, y: 20, scale: 0.95 }}

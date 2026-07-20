@@ -1,7 +1,8 @@
 /* index.css */
 :root {
   /* Strict Premium SaaS Color Palette */
-  --bg-primary: #020817;
+  --bg-primary: #030712;
+  --bg-dark: #030712;
   --bg-secondary: #0F172A; /* Sidebar/Control Panel Background */
   --card-bg: #111827;
   --input-bg: #1E293B;
@@ -39,6 +40,7 @@
 /* Light Theme Variables */
 body.light-theme {
   --bg-primary: #F8FAFC;
+  --bg-dark: #F8FAFC;
   --bg-secondary: #F1F5F9;
   --card-bg: #FFFFFF;
   --card-bg-subtle: #F8FAFC;
@@ -64,6 +66,9 @@ body.light-theme {
 
 body {
   background-color: var(--bg-primary);
+  background-image: 
+    radial-gradient(ellipse at 50% -20%, rgba(124, 58, 237, 0.35) 0%, rgba(79, 70, 229, 0.18) 35%, rgba(15, 23, 42, 0.95) 70%, #020617 100%);
+  background-attachment: fixed;
   color: var(--text-main);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -73,32 +78,108 @@ body {
   position: relative;
 }
 
-/* Floating Gradient Blobs for Ambient Depth */
+body.light-theme {
+  background-color: #F1F5F9;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(124, 58, 237, 0.18) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(56, 189, 248, 0.18) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
+    linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 45%, #E0E7FF 100%);
+  background-attachment: fixed;
+}
+
+/* Special Premium SaaS Login Background */
+.login-page-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% -10%, #1e1b4b 0%, #0f172a 55%, #020617 100%) !important;
+}
+
+/* Dynamic Ambient Glow Light Orbs */
 body::after {
   content: '';
   position: fixed;
-  top: -15%;
-  left: -15%;
-  width: 50vw;
-  height: 50vw;
-  background: radial-gradient(circle, rgba(124, 88, 237, 0.05) 0%, transparent 65%);
+  top: -10%;
+  left: -10%;
+  width: 45vw;
+  height: 45vw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.3) 0%, rgba(124, 58, 237, 0.08) 50%, transparent 70%);
+  filter: blur(60px);
   pointer-events: none;
   z-index: -2;
+  animation: floatOrb1 18s ease-in-out infinite alternate;
 }
 
 body::before {
   content: '';
   position: fixed;
-  bottom: -15%;
-  right: -15%;
+  bottom: -10%;
+  right: -10%;
   width: 50vw;
   height: 50vw;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.05) 0%, transparent 65%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.28) 0%, rgba(6, 182, 212, 0.12) 50%, transparent 70%);
+  filter: blur(70px);
   pointer-events: none;
   z-index: -2;
+  animation: floatOrb2 22s ease-in-out infinite alternate;
 }
 
-/* Grid Overlay */
+body.light-theme::after {
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.22) 0%, rgba(124, 58, 237, 0.05) 50%, transparent 70%);
+}
+
+body.light-theme::before {
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.2) 0%, rgba(6, 182, 212, 0.08) 50%, transparent 70%);
+}
+
+.bg-glow-orb-1 {
+  position: absolute;
+  top: -10%;
+  left: 10%;
+  width: 450px;
+  height: 450px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.45) 0%, rgba(124, 58, 237, 0.1) 60%, transparent 80%);
+  filter: blur(65px);
+  pointer-events: none;
+  z-index: 1;
+  animation: floatOrb1 14s ease-in-out infinite alternate;
+}
+
+.bg-glow-orb-2 {
+  position: absolute;
+  bottom: -10%;
+  right: 10%;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(79, 70, 229, 0.15) 60%, transparent 80%);
+  filter: blur(75px);
+  pointer-events: none;
+  z-index: 1;
+  animation: floatOrb2 18s ease-in-out infinite alternate;
+}
+
+@keyframes floatOrb1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.15); }
+  100% { transform: translate(-30px, 80px) scale(0.95); }
+}
+
+@keyframes floatOrb2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, -60px) scale(1.2); }
+  100% { transform: translate(40px, -30px) scale(0.9); }
+}
+
+/* Vignette Tech Grid Overlay */
 .grid-overlay {
   position: fixed;
   top: 0;
@@ -106,11 +187,56 @@ body::before {
   width: 100vw;
   height: 100vh;
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.005) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.005) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(124, 58, 237, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.12) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 65%, transparent 95%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 65%, transparent 95%);
   pointer-events: none;
-  z-index: -1;
+  z-index: 1;
+}
+
+body.light-theme .grid-overlay {
+  background-image: 
+    linear-gradient(rgba(99, 102, 241, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.15) 1px, transparent 1px);
+  mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 65%, transparent 95%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 65%, transparent 95%);
+}
+
+/* Ambient Center Spotlight Glow for Cards/Modals */
+.bg-glow-orb-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.4) 0%, rgba(79, 70, 229, 0.2) 45%, transparent 75%);
+  filter: blur(55px);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  animation: pulseGlow 6s ease-in-out infinite alternate;
+}
+
+body.light-theme .bg-glow-orb-center {
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.25) 0%, rgba(79, 70, 229, 0.12) 45%, transparent 75%);
+}
+
+@keyframes pulseGlow {
+  0% { transform: translate(-50%, -50%) scale(0.92); opacity: 0.75; }
+  100% { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+}
+
+@keyframes timerPulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.8; }
+  100% { opacity: 1; }
+}
+
+.timer-pulse {
+  animation: timerPulse 2s ease-in-out infinite;
 }
 
 h1, h2, h3, h4, h5, h6 {

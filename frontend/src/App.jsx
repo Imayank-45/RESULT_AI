@@ -12,6 +12,184 @@ const isDev = window.location.port === '5173';
 const host = isDev ? '127.0.0.1:8000' : window.location.host;
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${host}/api/ws`;
 
+function ScrapingTimerWidget({ jobStatus, processedCount }) {
+  const [seconds, setSeconds] = useState(0);
+  const [isActive, setIsActive] = useState(false);
+  const prevStatusRef = useRef(jobStatus);
+  const timerRef = useRef(null);
+
+  // Auto start/stop on jobStatus transitions
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    
+    // Status transitioned to 'running' -> Reset and Start
+    if (jobStatus === 'running' && prevStatus !== 'running') {
+      setSeconds(0);
+      setIsActive(true);
+    } 
+    // Status transitioned from 'running' to non-running -> Stop
+    else if (jobStatus !== 'running' && prevStatus === 'running') {
+      setIsActive(false);
+    }
+    
+    prevStatusRef.current = jobStatus;
+  }, [jobStatus]);
+
+  // Interval timer handler
+  useEffect(() => {
+    if (isActive) {
+      timerRef.current = setInterval(() => {
+        setSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isActive]);
+
+  const handleManualStart = (e) => {
+    e.stopPropagation();
+    setIsActive(true);
+  };
+
+  const handleManualStop = (e) => {
+    e.stopPropagation();
+    setIsActive(false);
+  };
+
+  const formatTime = (totalSec) => {
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(hrs)} : ${pad(mins)} : ${pad(secs)}`;
+  };
+
+  const formatAvgTime = (totalSec, processed) => {
+    if (!processed || processed <= 0) return '00:00.0';
+    const avgSec = totalSec / processed;
+    const mins = Math.floor(avgSec / 60);
+    const secs = (avgSec % 60).toFixed(1);
+    const pad = (n) => String(n).padStart(2, '0');
+    const secParts = secs.split('.');
+    const integerSecs = pad(secParts[0]);
+    const decimalSecs = secParts[1] || '0';
+    return `${pad(mins)}:${integerSecs}.${decimalSecs}`;
+  };
+
+  return (
+    <div className="metric-card" style={{ '--accent-color': 'var(--primary)' }}>
+      <div className="metric-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <span className="metric-label">Scraping Time</span>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button
+            type="button"
+            onClick={handleManualStart}
+            disabled={isActive}
+            title="Start Timer Manually"
+            style={{
+              background: isActive ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--card-border)',
+              color: isActive ? 'var(--success)' : 'var(--text-muted)',
+              borderRadius: '6px',
+              padding: '2px 7px',
+              fontSize: '10px',
+              fontWeight: '700',
+              cursor: isActive ? 'default' : 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            ▶ Start
+          </button>
+          <button
+            type="button"
+            onClick={handleManualStop}
+            disabled={!isActive}
+            title="Stop Timer Manually"
+            style={{
+              background: !isActive ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--card-border)',
+              color: !isActive ? 'var(--danger)' : 'var(--text-muted)',
+              borderRadius: '6px',
+              padding: '2px 7px',
+              fontSize: '10px',
+              fontWeight: '700',
+              cursor: !isActive ? 'default' : 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            ■ Stop
+          </button>
+        </div>
+      </div>
+
+      <div 
+        className={`metric-value ${isActive ? 'timer-pulse' : ''}`}
+        style={{
+          fontFamily: 'monospace',
+          fontSize: '20px',
+          letterSpacing: '0.5px',
+          margin: '6px 0',
+          color: isActive ? 'var(--title-color)' : 'var(--text-muted)'
+        }}
+      >
+        {formatTime(seconds)}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', marginBottom: '8px' }}>
+        {isActive ? (
+          <>
+            <span 
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: 'var(--success)',
+                display: 'inline-block',
+                boxShadow: '0 0 8px var(--success)',
+                animation: 'pulse 1.2s infinite'
+              }}
+            />
+            <span style={{ color: 'var(--success)' }}>● Running</span>
+          </>
+        ) : (
+          <>
+            <span 
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: '#64748b',
+                display: 'inline-block'
+              }}
+            />
+            <span style={{ color: '#64748b' }}>■ Stopped</span>
+          </>
+        )}
+      </div>
+
+      {/* AVERAGE TIME PER STUDENT */}
+      <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: '6px', width: '100%' }}>
+        <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>
+          Average Time Per Student
+        </span>
+        <span style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--primary)', fontFamily: 'monospace', marginTop: '2px', display: 'inline-block' }}>
+          {formatAvgTime(seconds, processedCount)} <span style={{ fontSize: '9.5px', color: 'var(--text-muted)', fontWeight: '600' }}>sec/student</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function MainApp() {
   const { user, loading, isAuthenticated, logout, authFetch } = useAuth();
 
@@ -415,7 +593,7 @@ function MainApp() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--bg-dark)',
+        background: 'var(--bg-primary)',
         color: '#FFFFFF'
       }}>
         <div style={{
@@ -1170,6 +1348,7 @@ function MainApp() {
           >
             {/* METRIC COUNTERS */}
             <section className="metrics-row">
+              <ScrapingTimerWidget jobStatus={jobState.status} processedCount={jobState.processed} />
               <div className="metric-card" style={{ '--accent-color': 'var(--primary)' }}>
                 <div className="metric-header"><span className="metric-label">Processed</span></div>
                 <div className="metric-value">{jobState.processed} / {jobState.total}</div>
