@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+venv
+frontend/node_modules
+data/reports/*.pdf
+data/uploads/*.xlsx
+__pycache__
+*.pyc
+*.pyo
+.DS_Store
