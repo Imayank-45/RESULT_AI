@@ -6,7 +6,7 @@ import queue
 import sys
 import threading
 from typing import List, Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,10 +22,17 @@ from automation.parser import parse_result_html, ResultNotFound
 from automation.excel_writer import write_excel
 from report_generator.api import report_router
 
+# Import Database & Auth modules
+from backend.db.database import Base, engine, SessionLocal
+from backend.db.models import User
+from backend.db.auth import get_password_hash, get_current_user
+from backend.auth_router import auth_router
+
 # Initialize FastAPI
 app = FastAPI(title="ResultAI API", version="1.0.0")
 
-# Mount report generator router
+# Mount Routers
+app.include_router(auth_router)
 app.include_router(report_router, prefix="/api/report")
 
 # Enable CORS for frontend development server
@@ -256,7 +263,7 @@ class StartJobRequest(BaseModel):
 
 
 @app.post("/api/scrape/start")
-def start_scraping_job(req: StartJobRequest):
+def start_scraping_job(req: StartJobRequest, current_user: User = Depends(get_current_user)):
     global active_runner
     with runner_lock:
         if active_runner is not None:
@@ -280,7 +287,7 @@ def start_scraping_job(req: StartJobRequest):
 
 
 @app.post("/api/scrape/cancel")
-def cancel_scraping_job():
+def cancel_scraping_job(current_user: User = Depends(get_current_user)):
     global active_runner
     if active_runner is None:
         raise HTTPException(status_code=400, detail="No active scraping job is running.")
@@ -380,9 +387,61 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-# Start background broadcast task on startup
+# Start DB initialization and background broadcast task on startup
 @app.on_event("startup")
 async def startup_event():
+    # Initialize database tables
+    Base.metadata.create_all(bind=engine)
+    
+    # Seed default admin user if database is empty or update admin credentials
+    db = SessionLocal()
+    try:
+        admin_user = db.query(User).filter(User.email == "admin@resultai.com").first()
+        if not admin_user:
+            default_admin = User(
+                name="Administrator",
+                email="admin@resultai.com",
+                password_hash=get_password_hash("Admin@123456"),
+                is_active=True
+            )
+            db.add(default_admin)
+            db.commit()
+            print("[System] Default admin user seeded: admin@resultai.com / Admin@123456")
+        else:
+            admin_user.password_hash = get_password_hash("Admin@123456")
+            admin_user.is_active = True
+            db.commit()
+            print("[System] Default admin password synced: admin@resultai.com / Admin@123456")
+    except Exception as e:
+        print(f"[System] Database startup initialization error: {e}")
+    finally:
+        db.close()
+    # Copy brand logo artifact to frontend folders
+    try:
+        import shutil
+        logo_artifact = r"C:\Users\mayan\.gemini\antigravity-ide\brain\14285cfe-ce6a-4f14-b649-95f140bfe626\media__1784561737544.jpg"
+        if os.path.exists(logo_artifact):
+            root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            public_dir = os.path.join(root_dir, "frontend", "public")
+            src_assets = os.path.join(root_dir, "frontend", "src", "assets")
+            dist_dir = os.path.join(root_dir, "frontend", "dist")
+            
+            for d in [public_dir, src_assets, dist_dir]:
+                os.makedirs(d, exist_ok=True)
+                shutil.copy(logo_artifact, os.path.join(d, "logo.png"))
+                shutil.copy(logo_artifact, os.path.join(d, "logo.jpg"))
+            
+            import base64
+            with open(logo_artifact, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            js_content = f'export const LOGO_BASE64 = "data:image/jpeg;base64,{b64}";\nexport default LOGO_BASE64;\n'
+            with open(os.path.join(src_assets, "logoData.js"), "w", encoding="utf-8") as f:
+                f.write(js_content)
+
+            print("[System] Official ResultAI brand logo copied & logoData.js created!")
+    except Exception as exc:
+        print(f"[System] Logo sync warning: {exc}")
+
     task = asyncio.create_task(broadcast_updates())
     background_tasks.add(task)
     task.add_done_callback(background_tasks.discard)

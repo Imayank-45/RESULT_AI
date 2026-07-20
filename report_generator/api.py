@@ -18,11 +18,13 @@ import os
 import threading
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from report_generator.generate_report import generate_report
+from backend.db.auth import get_current_user
+from backend.db.models import User
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -57,7 +59,7 @@ _report_lock = threading.Lock()
 
 
 @report_router.post("/upload")
-async def upload_excel_file(request: Request, filename: str):
+async def upload_excel_file(request: Request, filename: str, current_user: User = Depends(get_current_user)):
     """Upload raw binary Excel file content and save it to data/uploads/."""
     upload_dir = os.path.join("data", "uploads")
     os.makedirs(upload_dir, exist_ok=True)
@@ -76,7 +78,7 @@ async def upload_excel_file(request: Request, filename: str):
 
 
 @report_router.post("/generate", response_model=ReportResponse)
-def generate_report_endpoint(req: ReportRequest):
+def generate_report_endpoint(req: ReportRequest, current_user: User = Depends(get_current_user)):
     """Generate a PDF report from the specified Excel file."""
     global _report_status
 

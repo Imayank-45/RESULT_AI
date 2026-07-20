@@ -652,35 +652,61 @@ export default function ResultCompareStudio() {
       style={{ padding: '0 0 20px 0', gap: '20px' }}
     >
       {/* Title Header */}
-      <div className="table-section-header" style={{ marginBottom: '10px' }}>
+      <div className="table-section-header" style={{ marginBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '850', background: 'linear-gradient(to right, var(--title-color), #7C3AED)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Result Compare Studio
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              background: 'var(--primary-gradient)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(124,58,237,0.3)',
+              color: '#FFF'
+            }}>
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 1318 4m0 0l-4 4m4-4H3m18-6H7m0 0l4-4m-4 4l4 4"/>
+              </svg>
+            </div>
+            <h2 style={{ fontSize: '24px', fontWeight: '850', background: 'linear-gradient(135deg, var(--title-color), #7C3AED, #2563EB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.3px' }}>
+              Result Compare Studio
+            </h2>
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '6px', fontWeight: '500' }}>
             Compare branches, classes, student PDF results, or track semester-wise progress in real-time.
           </p>
         </div>
 
         {/* Mode Switcher Buttons */}
-        <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '10px', border: '1px solid var(--card-border)' }}>
-          {['class', 'student', 'semester'].map(m => (
+        <div style={{ display: 'flex', gap: '6px', background: 'var(--card-bg)', padding: '5px', borderRadius: '12px', border: '1px solid var(--card-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+          {[
+            { id: 'class', label: 'Class Comparison', icon: '🏫' },
+            { id: 'student', label: 'Student Comparison', icon: '👤' },
+            { id: 'semester', label: 'Semester Comparison', icon: '📈' }
+          ].map(m => (
             <button
-              key={m}
-              onClick={() => setMode(m)}
+              key={m.id}
+              onClick={() => setMode(m.id)}
               className="btn"
               style={{
                 width: 'auto',
-                padding: '6px 14px',
+                padding: '7px 16px',
                 borderRadius: '8px',
                 fontSize: '12px',
-                background: mode === m ? 'var(--primary-gradient)' : 'transparent',
-                color: mode === m ? '#FFFFFF' : 'var(--text-muted)',
-                boxShadow: mode === m ? '0 2px 10px rgba(124,58,237,0.3)' : 'none',
-                transition: 'all 0.2s'
+                fontWeight: '750',
+                background: mode === m.id ? 'var(--primary-gradient)' : 'transparent',
+                color: mode === m.id ? '#FFFFFF' : 'var(--text-muted)',
+                boxShadow: mode === m.id ? '0 4px 14px rgba(124,58,237,0.35)' : 'none',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
             >
-              {m.toUpperCase()} COMPARISON
+              <span>{m.icon}</span>
+              {m.label}
             </button>
           ))}
         </div>
@@ -688,25 +714,30 @@ export default function ResultCompareStudio() {
 
       {/* DRAG AND DROP FILE UPLOAD ZONES */}
       {(!dataA || !dataB) && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 1fr', alignItems: 'center', gap: '16px', minHeight: '260px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 1fr', alignItems: 'center', gap: '20px', minHeight: '290px', margin: '10px 0' }}>
           {/* FILE UPLOAD ZONE A */}
-          <div 
+          <motion.div 
+            whileHover={{ scale: 1.01, translateY: -2 }}
+            transition={{ duration: 0.2 }}
             className="glass-panel"
             onDragOver={handleDragOver}
             onDrop={(e) => handleFileDrop(e, 'A')}
             style={{
               height: '100%',
+              minHeight: '260px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '40px 20px',
+              padding: '36px 24px',
               textAlign: 'center',
-              border: `2px dashed ${fileA ? 'var(--primary)' : 'var(--card-border)'}`,
-              borderRadius: '16px',
+              border: `2px dashed ${fileA ? '#10B981' : 'var(--primary)'}`,
+              borderRadius: '20px',
               cursor: 'pointer',
-              background: 'rgba(255,255,255,0.01)',
-              position: 'relative'
+              background: fileA ? 'rgba(16, 185, 129, 0.03)' : 'var(--card-bg)',
+              boxShadow: fileA ? '0 10px 30px rgba(16, 185, 129, 0.1)' : '0 10px 30px rgba(124, 58, 237, 0.05)',
+              position: 'relative',
+              transition: 'border 0.2s, background 0.2s'
             }}
             onClick={() => fileInputRefA.current.click()}
           >
@@ -717,70 +748,116 @@ export default function ResultCompareStudio() {
               onChange={(e) => handleFileSelect(e, 'A')} 
             />
             {loadingA > 0 ? (
-              <div style={{ width: '100%' }}>
-                <p style={{ fontWeight: '800', color: 'var(--primary)', marginBottom: '12px' }}>Parsing File 1...</p>
-                <div style={{ height: '6px', background: 'var(--card-border)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${loadingA}%`, background: 'var(--primary-gradient)', transition: 'width 0.2s' }}></div>
+              <div style={{ width: '100%', maxWidth: '280px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '14px' }}>
+                  <div className="spinner-small" style={{ borderTopColor: 'var(--primary)' }}></div>
+                  <p style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '14px' }}>Parsing File 1 ({loadingA}%)...</p>
+                </div>
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--card-border)' }}>
+                  <div style={{ height: '100%', width: `${loadingA}%`, background: 'var(--primary-gradient)', transition: 'width 0.2s', borderRadius: '6px' }}></div>
                 </div>
               </div>
             ) : fileA ? (
               <div>
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ marginBottom: '12px' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" />
-                </svg>
-                <h4 style={{ fontSize: '14.5px', fontWeight: '800' }}>{fileA.name}</h4>
-                <p style={{ fontSize: '11px', color: 'var(--success)', marginTop: '6px' }}>Ready to Compare</p>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 14px auto'
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--title-color)' }}>{fileA.name}</h4>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', padding: '4px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: '750', marginTop: '10px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }}></span>
+                  Ready to Compare
+                </div>
               </div>
             ) : (
               <div>
-                <svg width="40" height="40" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: '14px', opacity: 0.6 }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
-                </svg>
-                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--title-color)' }}>Upload {mode === 'student' ? 'Student PDF / Excel' : 'Class A Excel / CSV'}</h4>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>Drag & Drop or Click to Browse</p>
+                <div style={{
+                  width: '58px',
+                  height: '58px',
+                  borderRadius: '16px',
+                  background: 'rgba(124, 58, 237, 0.08)',
+                  border: '1px solid rgba(124, 58, 237, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px auto',
+                  color: 'var(--primary)',
+                  boxShadow: '0 6px 20px rgba(124, 58, 237, 0.15)'
+                }}>
+                  <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--title-color)' }}>
+                  Upload {mode === 'student' ? 'Student PDF / Excel' : 'Class A Excel / CSV'}
+                </h4>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginTop: '6px', fontWeight: '500' }}>
+                  Drag & Drop or <span style={{ color: 'var(--primary)', fontWeight: '700', textDecoration: 'underline' }}>Click to Browse</span>
+                </p>
+                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '16px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', padding: '2px 8px', borderRadius: '6px', color: 'var(--text-muted)' }}>.XLSX</span>
+                  <span style={{ fontSize: '10px', fontWeight: '800', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', padding: '2px 8px', borderRadius: '6px', color: 'var(--text-muted)' }}>.CSV</span>
+                  <span style={{ fontSize: '10px', fontWeight: '800', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', padding: '2px 8px', borderRadius: '6px', color: 'var(--text-muted)' }}>.PDF</span>
+                </div>
               </div>
             )}
-            {errorA && <p style={{ color: 'var(--danger)', fontSize: '11px', marginTop: '10px', fontWeight: '600' }}>{errorA}</p>}
-          </div>
+            {errorA && <p style={{ color: 'var(--danger)', fontSize: '11.5px', marginTop: '12px', fontWeight: '700', background: 'rgba(239, 68, 68, 0.1)', padding: '6px 12px', borderRadius: '8px' }}>{errorA}</p>}
+          </motion.div>
 
           {/* VS CIRCLE */}
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
             <div style={{
-              width: '42px',
-              height: '42px',
+              width: '46px',
+              height: '46px',
               borderRadius: '50%',
-              background: 'var(--primary-gradient)',
-              border: '2px solid rgba(255,255,255,0.1)',
+              background: 'linear-gradient(135deg, #7C3AED, #3B82F6)',
+              border: '3px solid var(--card-bg)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: '800',
-              fontSize: '14px',
+              fontWeight: '900',
+              fontSize: '13px',
               color: '#FFFFFF',
-              boxShadow: '0 4px 14px rgba(124,58,237,0.4)'
+              boxShadow: '0 0 25px rgba(124, 58, 237, 0.5)',
+              zIndex: 2
             }}>
               VS
             </div>
           </div>
 
           {/* FILE UPLOAD ZONE B */}
-          <div 
+          <motion.div 
+            whileHover={{ scale: 1.01, translateY: -2 }}
+            transition={{ duration: 0.2 }}
             className="glass-panel"
             onDragOver={handleDragOver}
             onDrop={(e) => handleFileDrop(e, 'B')}
             style={{
               height: '100%',
+              minHeight: '260px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '40px 20px',
+              padding: '36px 24px',
               textAlign: 'center',
-              border: `2px dashed ${fileB ? 'var(--primary)' : 'var(--card-border)'}`,
-              borderRadius: '16px',
+              border: `2px dashed ${fileB ? '#10B981' : 'var(--primary)'}`,
+              borderRadius: '20px',
               cursor: 'pointer',
-              background: 'rgba(255,255,255,0.01)',
-              position: 'relative'
+              background: fileB ? 'rgba(16, 185, 129, 0.03)' : 'var(--card-bg)',
+              boxShadow: fileB ? '0 10px 30px rgba(16, 185, 129, 0.1)' : '0 10px 30px rgba(124, 58, 237, 0.05)',
+              position: 'relative',
+              transition: 'border 0.2s, background 0.2s'
             }}
             onClick={() => fileInputRefB.current.click()}
           >
@@ -791,31 +868,71 @@ export default function ResultCompareStudio() {
               onChange={(e) => handleFileSelect(e, 'B')} 
             />
             {loadingB > 0 ? (
-              <div style={{ width: '100%' }}>
-                <p style={{ fontWeight: '800', color: 'var(--primary)', marginBottom: '12px' }}>Parsing File 2...</p>
-                <div style={{ height: '6px', background: 'var(--card-border)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${loadingB}%`, background: 'var(--primary-gradient)', transition: 'width 0.2s' }}></div>
+              <div style={{ width: '100%', maxWidth: '280px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '14px' }}>
+                  <div className="spinner-small" style={{ borderTopColor: 'var(--primary)' }}></div>
+                  <p style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '14px' }}>Parsing File 2 ({loadingB}%)...</p>
+                </div>
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--card-border)' }}>
+                  <div style={{ height: '100%', width: `${loadingB}%`, background: 'var(--primary-gradient)', transition: 'width 0.2s', borderRadius: '6px' }}></div>
                 </div>
               </div>
             ) : fileB ? (
               <div>
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" style={{ marginBottom: '12px' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" />
-                </svg>
-                <h4 style={{ fontSize: '14.5px', fontWeight: '800' }}>{fileB.name}</h4>
-                <p style={{ fontSize: '11px', color: 'var(--success)', marginTop: '6px' }}>Ready to Compare</p>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 14px auto'
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--title-color)' }}>{fileB.name}</h4>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', padding: '4px 12px', borderRadius: '20px', fontSize: '11.5px', fontWeight: '750', marginTop: '10px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }}></span>
+                  Ready to Compare
+                </div>
               </div>
             ) : (
               <div>
-                <svg width="40" height="40" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: '14px', opacity: 0.6 }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
-                </svg>
-                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--title-color)' }}>Upload {mode === 'student' ? 'Student PDF / Excel' : 'Class B Excel / CSV'}</h4>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>Drag & Drop or Click to Browse</p>
+                <div style={{
+                  width: '58px',
+                  height: '58px',
+                  borderRadius: '16px',
+                  background: 'rgba(124, 58, 237, 0.08)',
+                  border: '1px solid rgba(124, 58, 237, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px auto',
+                  color: 'var(--primary)',
+                  boxShadow: '0 6px 20px rgba(124, 58, 237, 0.15)'
+                }}>
+                  <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--title-color)' }}>
+                  Upload {mode === 'student' ? 'Student PDF / Excel' : 'Class B Excel / CSV'}
+                </h4>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginTop: '6px', fontWeight: '500' }}>
+                  Drag & Drop or <span style={{ color: 'var(--primary)', fontWeight: '700', textDecoration: 'underline' }}>Click to Browse</span>
+                </p>
+                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '16px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', padding: '2px 8px', borderRadius: '6px', color: 'var(--text-muted)' }}>.XLSX</span>
+                  <span style={{ fontSize: '10px', fontWeight: '800', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', padding: '2px 8px', borderRadius: '6px', color: 'var(--text-muted)' }}>.CSV</span>
+                  <span style={{ fontSize: '10px', fontWeight: '800', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', padding: '2px 8px', borderRadius: '6px', color: 'var(--text-muted)' }}>.PDF</span>
+                </div>
               </div>
             )}
-            {errorB && <p style={{ color: 'var(--danger)', fontSize: '11px', marginTop: '10px', fontWeight: '600' }}>{errorB}</p>}
-          </div>
+            {errorB && <p style={{ color: 'var(--danger)', fontSize: '11.5px', marginTop: '12px', fontWeight: '700', background: 'rgba(239, 68, 68, 0.1)', padding: '6px 12px', borderRadius: '8px' }}>{errorB}</p>}
+          </motion.div>
         </div>
       )}
 
