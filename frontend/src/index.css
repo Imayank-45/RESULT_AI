@@ -1071,3 +1071,84 @@ body.light-theme .btn-secondary:hover {
   to { transform: rotate(360deg); }
 }
 
+/* ==========================================
+   SKELETON LOADING ANIMATION SYSTEM
+   ========================================== */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(124, 58, 237, 0.15) 37%,
+    rgba(255, 255, 255, 0.04) 63%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+body.light-theme .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.05) 25%,
+    rgba(124, 58, 237, 0.12) 37%,
+    rgba(0, 0, 0, 0.05) 63%
+  );
+  background-size: 200% 100%;
+}
+
+.skeleton-text {
+  height: 14px;
+  width: 100%;
+  border-radius: 6px;
+}
+
+.skeleton-title {
+  height: 22px;
+  width: 60%;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.skeleton-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.skeleton-badge {
+  height: 20px;
+  width: 58px;
+  border-radius: 6px;
+}
+
+.skeleton-btn {
+  height: 32px;
+  width: 90px;
+  border-radius: 8px;
+}
+
+.skeleton-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-table-cell {
+  padding: 16px 20px;
+}
+
+

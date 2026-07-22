@@ -748,14 +748,16 @@ export default function ResultCompareStudio() {
               onChange={(e) => handleFileSelect(e, 'A')} 
             />
             {loadingA > 0 ? (
-              <div style={{ width: '100%', maxWidth: '280px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '14px' }}>
+              <div style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
                   <div className="spinner-small" style={{ borderTopColor: 'var(--primary)' }}></div>
                   <p style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '14px' }}>Parsing File 1 ({loadingA}%)...</p>
                 </div>
                 <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--card-border)' }}>
                   <div style={{ height: '100%', width: `${loadingA}%`, background: 'var(--primary-gradient)', transition: 'width 0.2s', borderRadius: '6px' }}></div>
                 </div>
+                <div className="skeleton skeleton-text" style={{ width: '100%', height: '12px', marginTop: '6px' }}></div>
+                <div className="skeleton skeleton-text" style={{ width: '80%', height: '12px', margin: '0 auto' }}></div>
               </div>
             ) : fileA ? (
               <div>
@@ -868,14 +870,16 @@ export default function ResultCompareStudio() {
               onChange={(e) => handleFileSelect(e, 'B')} 
             />
             {loadingB > 0 ? (
-              <div style={{ width: '100%', maxWidth: '280px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '14px' }}>
+              <div style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
                   <div className="spinner-small" style={{ borderTopColor: 'var(--primary)' }}></div>
                   <p style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '14px' }}>Parsing File 2 ({loadingB}%)...</p>
                 </div>
                 <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--card-border)' }}>
                   <div style={{ height: '100%', width: `${loadingB}%`, background: 'var(--primary-gradient)', transition: 'width 0.2s', borderRadius: '6px' }}></div>
                 </div>
+                <div className="skeleton skeleton-text" style={{ width: '100%', height: '12px', marginTop: '6px' }}></div>
+                <div className="skeleton skeleton-text" style={{ width: '80%', height: '12px', margin: '0 auto' }}></div>
               </div>
             ) : fileB ? (
               <div>

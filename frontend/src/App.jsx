@@ -852,7 +852,7 @@ function MainApp() {
                 fontWeight: '800',
                 overflow: 'hidden'
               }}>
-                {user?.profile_image && user?.profile_image.startsWith('http') ? (
+                {user?.profile_image && (user?.profile_image.startsWith('http') || user?.profile_image.startsWith('data:image')) ? (
                   <img src={user.profile_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : user?.profile_image || user?.name?.[0]?.toUpperCase() || 'A'}
               </div>
@@ -1195,6 +1195,24 @@ function MainApp() {
             {/* RIGHT: Live Logs & Download */}
             <div className="glass-panel" style={{ padding: '24px' }}>
               <h3 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-main)', marginBottom: '16px' }}>Generator Status</h3>
+              
+              {reportStatus === 'generating' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px', padding: '14px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--card-border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="skeleton skeleton-avatar" style={{ width: '32px', height: '32px' }}></div>
+                    <div className="skeleton skeleton-title" style={{ width: '70%', height: '16px', margin: 0 }}></div>
+                  </div>
+                  <div className="skeleton skeleton-text" style={{ width: '90%' }}></div>
+                  <div className="skeleton skeleton-text" style={{ width: '75%' }}></div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <div className="skeleton" style={{ height: '50px', flex: 1 }}></div>
+                    <div className="skeleton" style={{ height: '50px', flex: 1 }}></div>
+                    <div className="skeleton" style={{ height: '50px', flex: 1 }}></div>
+                  </div>
+                  <p style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: '700', margin: '4px 0 0 0', textAlign: 'center' }}>⚡ AI Engine compiling analytics & rendering 40+ PDF pages...</p>
+                </div>
+              )}
+
               {reportLogs.map((l, i) => (
                 <div key={i} style={{ fontSize: '12px', color: l.includes('[ERR]') ? '#EF4444' : l.includes('[SUCCESS]') ? '#22C55E' : 'var(--text-main)', marginBottom: '4px' }}>
                   {l}
@@ -1456,9 +1474,38 @@ function MainApp() {
               </div>
 
               {!jobState.records || jobState.records.length === 0 ? (
-                <div className="empty-state" style={{ padding: '40px', textAlign: 'center' }}>
-                  <p style={{ color: 'var(--text-muted)' }}>No records loaded yet. Click "Start Extraction" to scrape.</p>
-                </div>
+                isRunning ? (
+                  <div className="table-wrapper">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Enrollment</th>
+                          <th>Student Name</th>
+                          <th>Result</th>
+                          <th>SGPA</th>
+                          <th>CGPA</th>
+                          <th>Details</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <tr key={i}>
+                            <td><div className="skeleton skeleton-text" style={{ width: '110px' }}></div></td>
+                            <td><div className="skeleton skeleton-text" style={{ width: '150px' }}></div></td>
+                            <td><div className="skeleton skeleton-badge"></div></td>
+                            <td><div className="skeleton skeleton-text" style={{ width: '45px' }}></div></td>
+                            <td><div className="skeleton skeleton-text" style={{ width: '45px' }}></div></td>
+                            <td><div className="skeleton skeleton-btn"></div></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-state" style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No records loaded yet. Click "Start Extraction" to scrape.</p>
+                  </div>
+                )
               ) : (
                 <div className="table-wrapper">
                   <table>

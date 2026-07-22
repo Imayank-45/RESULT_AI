@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, API_BASE } from '../context/AuthContext';
 
 export default function ProfilePage({ onBackToDashboard }) {
   const { user, updateProfile, changePassword, authFetch, logout } = useAuth();
+  const fileInputRef = useRef(null);
 
   // Profile Form State
   const [name, setName] = useState(user?.name || '');
@@ -12,6 +13,64 @@ export default function ProfilePage({ onBackToDashboard }) {
   const [profileMsg, setProfileMsg] = useState('');
   const [profileError, setProfileError] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
+
+  // Image Upload & URL Modal/Toggle State
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+
+  // Handle custom image file upload & compression via Canvas
+  const handleImageFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setProfileError('Please select a valid image file (.png, .jpg, .jpeg, .webp)');
+      return;
+    }
+
+    setProfileError('');
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 300;
+        const MAX_HEIGHT = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setProfileImage(compressedDataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApplyUrl = () => {
+    if (imageUrlInput.trim()) {
+      setProfileImage(imageUrlInput.trim());
+      setShowUrlInput(false);
+      setImageUrlInput('');
+    }
+  };
 
   // Change Password Form State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -188,36 +247,131 @@ export default function ProfilePage({ onBackToDashboard }) {
             <h3 style={{ fontSize: '17px', fontWeight: '800' }}>Personal Information</h3>
           </div>
 
-          {/* Avatar Preview */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{
-              width: '72px',
-              height: '72px',
-              borderRadius: '20px',
-              background: 'var(--primary-gradient)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: profileImage && profileImage.length <= 4 ? '36px' : '28px',
-              color: '#FFFFFF',
-              boxShadow: '0 6px 20px rgba(124, 58, 237, 0.3)',
-              overflow: 'hidden'
-            }}>
-              {profileImage && profileImage.startsWith('http') ? (
+          {/* Hidden File Input for Image Upload */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            accept="image/*" 
+            style={{ display: 'none' }} 
+            onChange={handleImageFileSelect} 
+          />
+
+          {/* Avatar Preview & Photo Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+            <div 
+              onClick={() => fileInputRef.current.click()}
+              title="Click to Upload Profile Photo"
+              style={{
+                width: '84px',
+                height: '84px',
+                borderRadius: '24px',
+                background: 'var(--primary-gradient)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: profileImage && profileImage.length <= 4 ? '40px' : '32px',
+                color: '#FFFFFF',
+                boxShadow: '0 8px 25px rgba(124, 58, 237, 0.35)',
+                overflow: 'hidden',
+                position: 'relative',
+                cursor: 'pointer',
+                border: '2px solid var(--primary)'
+              }}
+            >
+              {profileImage && (profileImage.startsWith('http') || profileImage.startsWith('data:image')) ? (
                 <img src={profileImage} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : profileImage || user?.name?.[0]?.toUpperCase() || 'A'}
+
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0, 0, 0, 0.55)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 0,
+                transition: 'opacity 0.2s ease',
+                color: '#FFFFFF'
+              }}
+              className="avatar-hover-overlay"
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0'; }}
+              >
+                <span style={{ fontSize: '18px' }}>📷</span>
+                <span style={{ fontSize: '9px', fontWeight: '800', textTransform: 'uppercase' }}>Upload</span>
+              </div>
             </div>
 
-            <div>
-              <p style={{ fontWeight: '800', fontSize: '16px', color: 'var(--title-color)' }}>{user?.name}</p>
+            <div style={{ flex: 1, minWidth: '180px' }}>
+              <p style={{ fontWeight: '800', fontSize: '17px', color: 'var(--title-color)' }}>{user?.name}</p>
               <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>{user?.email}</p>
-              <span className="badge pass" style={{ marginTop: '6px', display: 'inline-block' }}>Active Account</span>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current.click()}
+                  className="btn btn-secondary"
+                  style={{ width: 'auto', padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  📷 Upload Photo
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(!showUrlInput)}
+                  className="btn btn-secondary"
+                  style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
+                >
+                  🌐 Image URL
+                </button>
+
+                {profileImage && (
+                  <button
+                    type="button"
+                    onClick={() => setProfileImage('')}
+                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: 'var(--danger)', padding: '6px 10px', borderRadius: '8px', fontSize: '11.5px', cursor: 'pointer', fontWeight: '700' }}
+                  >
+                    🗑️ Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
+          {/* Inline Image URL Input */}
+          <AnimatePresence>
+            {showUrlInput && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px', border: '1px solid var(--card-border)' }}
+              >
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Paste Direct Image Web Link (HTTPS URL)</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input 
+                    type="url"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    placeholder="https://example.com/my-photo.jpg"
+                    style={{ flex: 1, padding: '8px 12px', fontSize: '12.5px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyUrl}
+                    className="btn btn-primary"
+                    style={{ width: 'auto', padding: '8px 14px', fontSize: '12px' }}
+                  >
+                    Apply URL
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Preset Avatar Selection */}
           <div>
-            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Select Avatar Emoji</label>
+            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Or Choose Preset Emoji Avatar</label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {presetAvatars.map(av => (
                 <button
@@ -498,7 +652,30 @@ export default function ProfilePage({ onBackToDashboard }) {
         </div>
 
         {historyLoading ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading login history...</p>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Login Time</th>
+                  <th>Logout Time</th>
+                  <th>IP Address</th>
+                  <th>Browser</th>
+                  <th>Operating System</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4].map((i) => (
+                  <tr key={i}>
+                    <td><div className="skeleton skeleton-text" style={{ width: '130px' }}></div></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '110px' }}></div></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '80px' }}></div></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '100px' }}></div></td>
+                    <td><div className="skeleton skeleton-text" style={{ width: '90px' }}></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : loginHistory.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No recent login records found.</p>
         ) : (
